@@ -20,11 +20,11 @@ phacking-replication/
 
 | Strategy | File | Status |
 |---|---|---|
-| Optional stopping | `optional_stopping.Rmd` | 🔄 In progress (full iterations outstanding) |
-| Outlier exclusion | `outlier.Rmd` | 🔄 In progress (full iterations outstanding) |
-| Alternative hypothesis tests | `alternative_tests.Rmd` | ✅ (open for polishing) |
-| Incorrect rounding | `incorrect_rounding.Rmd` | ✅ (open for polishing)|
-| Discretizing continuous variables | `discretizing.Rmd` | ✅ (open for polishing) |
+| Optional stopping | `optional_stopping.Rmd` | 🔄 In progress (full iterations outstanding, MCSE missing) |
+| Outlier exclusion | `outlier.Rmd` | 🔄 In progress (full iterations outstanding, MCSE missing) |
+| Alternative hypothesis tests | `alternative_tests.Rmd` | 🔄 In progress (MCSE missing) |
+| Incorrect rounding | `incorrect_rounding.Rmd` | 🔄 In progress (MCSE missing)|
+| Discretizing continuous variables | `discretizing.Rmd` | 🔄 In progress (MCSE missing) |
 
 ## Reproducing the Results
 
