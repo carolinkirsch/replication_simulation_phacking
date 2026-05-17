@@ -14,7 +14,6 @@ plan(multisession, workers = parallel::detectCores() - 1)
 ```
 
 ```{r}
-source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
 source("functions.R")
 ```
 
