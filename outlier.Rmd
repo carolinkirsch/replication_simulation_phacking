@@ -16,9 +16,6 @@ plan(multisession, workers = parallel::detectCores() - 1)
 
 ```{r source}
 source("functions.R")
-
-# OPEN: do I want to "fingerprint" to check for changes later and load simulation results if nothing changed
-# functions_md5 <- tools::md5sum("functions.R") 
 ```
 
 ```{r general_settings}
@@ -32,8 +29,6 @@ Ad-hoc exclusion of extreme values to achieve statistical significance
 
 Number of outlier detection methods: k ∈ {3,5,12}
 -> explanation of outlier detection methods in appendix
-
-blah blah blah
 
 # functions
 ## generate data
@@ -63,8 +58,8 @@ get_p_single_var_outlier_removed <- function(data, out_x, out_y){
   if (has_out_x & has_out_y) cleaned_data$out_xy <- data |>
     filter(!(x %in% out_x & y %in% out_y))
   
-  # EXTENSION small "see everything simulation": To add cleaned_data later: add `cleaned_data = list(cleaned)` inside the tibble() call
-  # EXTENSION more in depth results: add threshold (would need to be extracted in every outlier technique that uses them)
+  # POSSIBLE EXTENSION small "see everything simulation": To add cleaned_data later: add `cleaned_data = list(cleaned)` inside the tibble() call
+  # POSSIBLE EXTENSION more in depth results: add threshold (would need to be extracted in every outlier technique that uses them)
   
   p_tibble <- cleaned_data |>
     # mapping over a named list
@@ -80,46 +75,6 @@ get_p_single_var_outlier_removed <- function(data, out_x, out_y){
 ```
 
 ## outlier detection techniques
-General idea:
-output_removal_xy function produces an output which is a dataframe with outliers on x, outliers on y, and outliers on x AND y
--> OPEN QUESTION: does this look like one df for outliers on x, one df for outliers on y, etc. bc there are strategies with multiple thresholds OR does this look like a nested df? 
---> PLAN: I assume for now it is easier to start with the one df each (bc also the nested ones have to be integrated) and then see along the way.
-
-Problems to solve / things to adapt:
-1. check what the possibilities are for for-loops & lists
-a) "better for loop" salina suggests I loop through elements of my vector (for i in threshold) directly instead of a through an index (i in 1:length(vector)). But I am unsure if this maybe poses a problem then for saving the results in a list (where i am indexing through). BUT don't try to solve now, see first if better option works
-b) creating a df with sapply:
-
-  # SJ: Beispiel mit Resultat DataFrame, hat den Vorteil, dass man nachher weiss welche z-values gebraucht wurden
-  #cleaned_data_df <- sapply(sd_threshold, function(sd_threshold){data |>
-  #    filter((abs(x_z) < i) & (abs(y_z) < i)) |> 
-  #    select(x, y)})
-  #names(cleaned_data_df) <- as.character(sd_threshold)
-  #res <- unique(t(cleaned_data_df))
-  #Resultat: DataFrame 
-  #       x   y
-  # sd1 c()  c()
-  # sd2 c()  c()
-  
-Hmmm i guess that translates to 
-A) Check feasibility of x,y,x&y in tiblle output
-1. adapt an easy function (-> boxplot) to df variant for x, y and x&y
-2. see how this would work out for simulation
---> Decide how the output of the function should look
-
-B) See how i can incorporate subj.thresholds (assuming tibble works)
-1. see if i can implement sapply and df in SD
-2. if yes adapt also for percentage, etc.
-Otherwise: at least make "better" for loops?
-
-C) adapt all the other outlier functions to df for x,y,x&z framework 
-(-> maybe there is also something useful in my file outlier_combined where the list mess didn't happen yet
---> BUUT it might be quicker to just delete it)
-
-apparently this introduces a problem with the unique function. BUT I think I just came up with that to save computational power, in the end it could also stay like this, I assume?
-CHECK real quick
-
-
 ### boxplot
 define single-variable outliers using graphics::boxplot()
 ```{r boxplot}
@@ -185,12 +140,6 @@ remove_out_stemleaf <- function(data) {
 ### SD
 Stefan & Schönbrodt (2023) define the SD detection technique with subjective threshold setting as follows: "Define single-variable outliers as $x$ standard deviations above or below the mean. Starting with a threshold of $x = 2$ standard deviations, the threshold is increased in increments of 0.5, until no more extreme values exist in the original sample."
 
-To me there seems to be some ambiguity whether the maximum threshold is the highest threshold ($\geq 2$) that produces at least one outlier or the lowest threshold ($\geq 2$) that doesn't produce outliers.
--> solved: since i verified and they always include the "baseline" p-value, meaning the original p-value of the complete dataset. It only makes sense to be the highest threshold ($\geq 2$) that produces at least one outlier. 
-
-Is it clear if it is >= threshold that are outliers or > threshold which are outliers?
--> no not clear from text & appendix, but irrelevant for continous data. resolved anyway with a quick check in OG code.
-
 ```{r SD}
 remove_out_sd <- function(data) {
   
@@ -254,12 +203,9 @@ remove_out_sd <- function(data) {
 ```
 
 ### percentage
-Salina suggestions exists (for cleaner with sapply and for at least better for-loops)
 Stefan & Schönbrodt (2023) define the percentage detection technique with subjective threshold setting as follows: "Define single-variable outliers as the highest or lowest $x$ percent of the values. Starting from a threshold of $1/N$ (smallest empirical quantile), the threshold is increased in increments of 0.05 to 1/20, i.e., 5%." 
 
 Since $1/20 = 0.05$, it is illogical to increase the threshold "in increments of 0.05 to 1/20". As I suspected a mistake or typo in the appendix of Stefan & Schönbrodt, I took a quick look at the original code to check the increment definition. Indeed, in their code, the increment was specified as 0.005. I will use this increment in the following code as well. 
-
-Another problem I have with the description is as follows: The way I understand the description of the method, I would use `seq(from = 1/n, to = 1/20, by = 0.005)` which is `c(0.003333333, 0.008333333, 0.013333333, ..., 0.048333333)`. However, in reality I would expect researchers to use more conventional values such as 0.01 or 0.05, which in this case aren't used. Nevertheless, I am going to implement the code the way I understand the description of the original method.
 
 ```{r percentage}
 remove_out_percentage <- function(data) {
@@ -344,8 +290,6 @@ remove_out_residuals_base <- function(data, res) {
 ```
 
 #### studentized residuals
-Stefan & Schönbrodt (2023) define the studentized residuals detection technique with subjective threshold setting as follows:
-Define outliers as values with high studentized residuals following from the regression y x. If the largest absolute residual value is smaller than 2 (CK: Assuming smaller or *equal*), the three largest residuals are marked as outliers. (CK: Assuming this means three largest *absolute* residuals.) If the largest absolute residual value is larger than 2 (CK: Assumung *strict* larger), the cut-off threshold is increased in increments of 0.5. (CK: Assuming that like for the SD technique everything above threshold is considered an outlier)
 
 CK: Stefan & Schönbrodt didn't mention using a package? since they use stats for dfbeta etc. assuming they did the same here (*quicky verified this in the code*)
 
@@ -363,7 +307,8 @@ remove_out_stures <- function(data) {
 
 #### standardized residuals
 Stefan & Schönbrodt (2023) define the studentized residuals detection technique with subjective threshold setting as follows:
-Same outlier definition as in (5) (CK: studentized residuals), just with standardized residuals
+Same outlier definition as in (studentized residuals), just with standardized residuals
+
 ```{r standardized_residuals}
 remove_out_stdres <- function(data) {
   model <- lm(y ~ x, data)
@@ -374,8 +319,7 @@ remove_out_stdres <- function(data) {
 ### DFBETA 
 Stefan & Schönbrodt (2023) define the DFBETA detection technique as follows:
 Define outliers as values with the three highest DFBETA-influence measures according to stats::dfbeta()
-CK: I don't know that much about DFBETA but from my quick google search. wouldn't it be more logical to take the highest ABSOLUTE values? or maybe with highest influence measures they mean absolute values?
-CK: assuming they only looked at the DFBETA values of x and not also of the intercept.
+
 ```{r dfbeta}
 remove_out_dfbeta <- function(data) {
   model <- lm(y ~ x, data)
@@ -397,7 +341,7 @@ remove_out_dfbeta <- function(data) {
 ### DFFITS
 Stefan & Schönbrodt (2023) define the DFFITS detection technique as follows:
 Define outliers as values with absolute DFFIT values larger than $2\sqrt{2/n}$, using the stats::dffits() function.
-CK: Assuming n is the sample size.
+
 ```{r dffits}
 remove_out_dffits <- function(data){
   
@@ -420,7 +364,6 @@ remove_out_dffits <- function(data){
 ### cook's distance
 Stefan & Schönbrodt (2023) define the Cook's distance detection technique as follows:
 Define values with a Cook's distance larger than the median of an F distribution with p=2 and N-p degrees of freedom, or larger than 1 as outliers, using stats::cooks.distance().
-CK: Assuming N is the sample size.
 
 ```{r cooks_distance}
 remove_out_cook <- function(data) {
@@ -444,7 +387,8 @@ remove_out_cook <- function(data) {
 ### mahalanobis distance
 Stefan & Schönbrodt (2023) define the Mahalanobis distance detection technique as follows:
 Define outliers as values with a robust Mahalanobis distance larger than $Md^2 > \chi^2(0.98, 2)$ using mvoutlier::uni.plot().
-I had to check how the OG suppressed the plot bc I couldn't figure it out.
+I had to check how the original suppressed the plot bc I couldn't figure it out.
+
 ```{r mahalanobis}
 remove_out_mahalanobis <- function(data) {
   
@@ -494,7 +438,7 @@ remove_out_leverage <- function(data) {
 Stefan & Schönbrodt (2023) define the covariance ratio detection technique as follows:
 Define outliers with a covariance ration different from 1 as outliers using stats::influence.measures().
 CK: but it is never exactly 1?! shouldn't another criteria be used? like this every value is an outlier!!
-CK: checked the original code and they used $is.inf[,"cov.r"]) which makes way more sense but is not what they have written in the appendix.
+CK: checked the original code and they used $is.inf[,"cov.r"]) which makes way more sense.
 
 ```{r cov_ratio}
 remove_out_covratio <- function(data) {
@@ -577,14 +521,11 @@ get_p_with_original_seq <- function(data, technique_vec) {
   )
 }
 ```
-
-
-
 ## reporting strategy
 source reporting_strategy_tibbles()
 
 # simulation
-OPEN: take the model estimation out of the outlier function and include the model in the grid for better computing efficiency? Would complicate things now and right now it does not seem to be that much of a computational problem
+POSSIBLE EXTENSION: take the model estimation out of the outlier function and include the model in the grid for better computing efficiency? Would complicate things now and right now it does not seem to be that much of a computational problem
 
 ## single
 ```{r sim_par_out_single, eval=FALSE, include=FALSE}
@@ -632,36 +573,6 @@ par_grid_out_seq <- expand_grid(
 )
 ```
 
-```{r benchmark, eval=FALSE}
-system.time({
-sim_out_seq <- par_grid_out_seq |>
-  mutate(
-    generated_data = pmap(
-      list(n),
-      generate_data_univar_linreg
-    ),
-    # OPEN (possible optimisation): pre-compute model in simulation? and not each time in the technique that need it
-    # original_analysis = pmap(
-    #   list(generated_data),
-    # ),
-    techniques_sample = pmap(
-      list(number_techniques),
-      sample_techniques
-    ), 
-    analysis_result = future_pmap(   # parallelising
-      .l = list(generated_data, techniques_sample),
-      .f = get_p_with_original_seq,
-      .progress = TRUE,
-      .options = furrr_options(seed = TRUE)
-    ),
-    reported_result = pmap(
-      list(analysis_result, reporting_strategy),
-      reporting_strategy_tibbles
-    )
-  )
-})
-```
-
 ```{r sim_out_seq}
 set.seed(12345)
 
@@ -695,7 +606,6 @@ sim_out_seq <- par_grid_out_seq |>
 ```{r}
 saveRDS(sim_out_seq, paste0("results/sim_out_seq_",n_iterations,"iterations.rds"))
 ```
-
 
 # results
 ## table 
