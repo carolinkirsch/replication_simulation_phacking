@@ -19,7 +19,7 @@ source("functions.R")
 
 ```{r}
 n_iterations <- 5000 # 30'000 since no reporting strategy that is varied
-alpha <- 0.05 # hmmm i kinda want to specify the default in the function? should i still do this here then? not really consistent now
+alpha <- 0.05
 ```
 
 Conduct intermediate significance tests during data collection, stop data collection when $p < \alpha$. Two versions:
@@ -40,7 +40,7 @@ get_p_ttest() sourced from functions file.
 ## p-hacking
 
 ```{r}
-optional_stopping <- function(data, n_min, n_max, k, alpha = 0.05){
+optional_stopping <- function(data, n_min, n_max, k, alpha = alpha){
   
   # define sample sizes at which a peek takes place
   #in case of k > n_max-n_min -> two peeks at (n_min, n_max)
