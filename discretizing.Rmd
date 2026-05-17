@@ -19,7 +19,7 @@ source("functions.R")
 ```
 
 ```{r}
-n_iterations <- 100
+n_iterations <- 10000
 alpha <- 0.05
 ```
 
