@@ -481,7 +481,7 @@ remove_out_single <- function(data, technique) {
     "mahalanobis"  = remove_out_mahalanobis(data),
     "leverage"     = remove_out_leverage(data),
     "covratio"     = remove_out_covratio(data),
-    stop(paste("Unbekannte Technik:", technique))
+    stop(paste("unknown technique:", technique))
   )
 }
 ```
