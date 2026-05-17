@@ -15,7 +15,7 @@ library(kableExtra)
 ```
 
 ```{r}
-source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
+source("functions.R")
 ```
 
 ```{r}
