@@ -111,27 +111,6 @@ sim_optstop_nmax <- par_grid_optstop_nmax |>
   )
 ```
 
-
-```{r eval=FALSE, include=FALSE}
-set.seed(12345)
- id=as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
-sim_optstop_nmax <- par_grid_optstop_nmax |>
-  mutate(
-    generated_data = pmap(
-      list(n_max),
-      generate_data_ttest
-    ),
-    analysis_result = future_pmap(   # parallelising
-      .l = list(generated_data[id,], n_min, n_max, k), 
-      .f = optional_stopping,
-      .progress = TRUE,
-      .options = furrr_options(seed = TRUE)
-    )
-  )
-
-saveRDS(sim_optstop_nmax, paste0("results/sim_optstop_nmax_",id,".rds"))
-```
-
 ## simulation n_min varied
 n_min varied
 ```{r sim_par_optstop}
@@ -163,7 +142,6 @@ sim_optstop_nmin <- par_grid_optstop_nmin |>
 ```
 
 ```{r}
-
 saveRDS(sim_optstop_nmax, paste0("results/sim_optstop_nmax_",n_iterations,"iterations.rds"))
 saveRDS(sim_optstop_nmin, paste0("results/sim_optstop_nmin_",n_iterations,"iterations.rds"))
 ```
@@ -193,9 +171,9 @@ sim_optstop_nmin_summary <- sim_optstop_nmin |>
 
 sim_optstop_nmin_summary
 ```
-
 OPEN: potentially add number of hypothetical peeks? since they are actually what influence the FPR
 decide later. when I decide what I want to show additionally
+
 ```{r eval=FALSE, include=FALSE}
 sim_optstop_nmax |>
   mutate(max_peeks = length(seq(n_min, n_max, k)))
