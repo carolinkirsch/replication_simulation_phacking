@@ -1,0 +1,189 @@
+---
+title: "discretizing"
+author: "Carolin Kirsch"
+date: "2026-01-22"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(ggtext)
+library(kableExtra)
+```
+
+```{r}
+source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
+```
+
+```{r}
+n_iterations <- 100
+alpha <- 0.05
+```
+
+Split continuous variables into multiple categories using arbitrary cutoff values to achieve statistical significance
+
+Only sample size varied
+
+three mechanisms to discretize a continuous variable: we used a median split, resulting in two groups, a tertile split, resulting in three groups, and a cut-the-middle split, where the middle category is removed after a tertile split to emulate a comparison of extreme groups.
+
+univariate linear regriossion (for the
+continuous predictor),
+two t-tests (for the median split and the cut the middle strategy),
+ANOVA (for the tertile split)
+
+# functions
+## data generating
+source generate_data_univar_linreg()
+
+## technique
+@stefan2023big didn't specify how they calculated the quantiles / if they used a function to split the data. So I assumed they used default settings for stats::quantile().
+
+### median split
+```{r}
+median_split <- function(data){
+  med <- median(data$x)
+
+  data_med_split <- data |> 
+  
+    mutate(x_med_split = case_when(
+      x <= med ~ 0,
+      x >  med ~ 1)) |> 
+    
+    select(y, x_med_split) |> 
+    rename(score = y,
+           condition = x_med_split)
+  
+  p_med_split <- get_p_ttest(data_med_split) 
+  
+  return(p_med_split)
+}
+```
+
+### tertile split
+```{r}
+tertile_split <- function(data){
+  
+  tertile <- quantile(data$x, c(1/3, 2/3))
+
+  data_tertile_split <- data %>%
+    mutate(condition = case_when(
+      x <= tertile[1] ~ 0,
+      x > tertile[1] & x <= tertile[2] ~ 1,
+      x > tertile[2] ~ 2)) %>%
+    mutate(condition = as.factor(condition)) |>
+    select(score = y, condition)
+  
+  anova_model <- aov(score ~ condition, data = data_tertile_split)
+  p_tertile_split <- summary(anova_model)[[1]][["Pr(>F)"]][[1]] #extract pvalue from anova
+  
+  return(p_tertile_split)
+}
+```
+
+
+### cut the middle split
+where the middle category is removed after a tertile split to emulate a comparison of extreme groups.
+```{r}
+cut_middle_split <- function(data){
+  tertile <- quantile(data$x, c(1/3, 2/3))
+
+  data_cut_middle_split <- data %>%
+    mutate(condition = case_when(
+        x <= tertile[1] ~ 0,
+        x > tertile[2] ~ 1)) %>%
+    select(score = y, condition) |> 
+    drop_na()
+  
+  p_cut_middle_split <- get_p_ttest(data_cut_middle_split)
+  
+  return(p_cut_middle_split)
+}
+```
+
+### continous
+source get_p_univar_linreg()
+
+## discretizing function
+
+```{r}
+discretize <- function(data){
+  p_tibble <- tibble(
+    p_value_type = c(
+      "p_lin_reg",
+      "p_med_split",
+      "p_tertile_split",
+      "p_cut_middle_split"
+    ),
+    p_value = c(
+      get_p_univar_linreg(data),
+      median_split(data),
+      tertile_split(data),
+      cut_middle_split(data)
+    )
+  )
+  
+  return(p_tibble)
+}
+```
+
+## reporting
+source reporting_strategy_tibbles()
+
+# simulation
+```{r}
+experiment_parameters_grid <- expand_grid(
+  n = c(30, 50, 100, 300),
+  iteration = 1:n_iterations,
+  reporting_strategy = c("first significant","smallest", "smallest significant")
+)
+```
+
+```{r}
+set.seed(12345)
+
+simulation <- experiment_parameters_grid |>
+  mutate(
+    generated_data = pmap(list(n),
+      generate_data_univar_linreg
+    ),
+    analysis_result = pmap(
+      list(generated_data),
+      discretize
+    ),
+    reported_result = pmap(
+      list(analysis_result, reporting_strategy),
+      reporting_strategy_tibbles
+    )    
+  )
+```
+
+# results
+## table
+```{r}
+# summarise simulation results over the iterations ----
+simulation_summary <- simulation |>
+  unnest(reported_result) |> 
+  group_by(n) |>
+  summarize(FPR = janitor::round_half_up(mean(p_value < .05), 2))
+
+simulation_summary
+```
+
+## plot
+```{r}
+ggplot(simulation_summary, 
+       aes(x=n,
+           y=FPR)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "n_per_group",
+    y = "False-Positive-Rate") +
+  ylim(0,0.5) +
+  scale_x_continuous(breaks = c(30, 50, 100, 300)) +
+  geom_hline(yintercept=alpha, colour="grey") +
+  theme_classic()
+```

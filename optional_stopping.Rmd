@@ -1,0 +1,238 @@
+---
+title: "optional stopping"
+author: "Carolin Kirsch"
+date: "2025-12-28"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(kableExtra)
+library(furrr)
+plan(multisession, workers = parallel::detectCores() - 1)
+```
+
+```{r}
+source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
+source("functions.R")
+```
+
+```{r}
+n_iterations <- 5000 # 30'000 since no reporting strategy that is varied
+alpha <- 0.05 # hmmm i kinda want to specify the default in the function? should i still do this here then? not really consistent now
+```
+
+Conduct intermediate significance tests during data collection, stop data collection when $p < \alpha$. Two versions:
+
+(1) Minimum sample size fixed: N_min = 5; Maximum sample size varied: N_max ∈ {30,50,100,300}; Step size: k ∈ {1,5,10,50}
+(2) Minimum sample size varied: N_min ∈ {5, 30, 50, 100}; Maximum sample size fixed: N_max = 300; Step size: k ∈ {1,5,10,50}
+
+If step size > N_max - N_min:
+simulate two peeks (at the minimum and the maximum sample size)
+
+# functions
+## data generating
+generate_data_ttest() sourced from functions file. 
+
+## analysis -> p value extraction
+get_p_ttest() sourced from functions file.
+
+## p-hacking
+
+```{r}
+optional_stopping <- function(data, n_min, n_max, k, alpha = 0.05){
+  
+  # define sample sizes at which a peek takes place
+  #in case of k > n_max-n_min -> two peeks at (n_min, n_max)
+  n_peek <- seq(n_min, n_max,by = k) 
+  if(length(n_peek) == 1) { 
+    n_peek <- c(n_min, n_max)
+  }
+  
+  count_peeks <- 0L
+  p <- NA_real_
+ 
+  # for loop necessary since I need the break criterion
+  # this drastically reduces computational effort 
+  for(n in n_peek){
+    count_peeks <- count_peeks + 1L
+    
+    p <- data |> # data is generated with sample size n_max
+      group_by(condition) |> # then out of each condition
+      slice(1:n) |> # the currently tested sample size gets extracted
+      ungroup() |>
+      get_p_ttest()
+    
+    # stopping when significant (-> equivalent to reporting strategy first. sig.)
+    if(p < alpha) break 
+  }
+
+  res <- tibble(
+    #hacked_data = list(data), #saving computational power
+    count_peeks = count_peeks,
+    n_stop = n_peek[count_peeks],
+    p = p)
+  
+  return(res)
+}
+```
+
+## reporting strategy
+doesn't apply here. "First significant" is already inherently part of the p-hacking strategy.
+
+# simulation
+## simulation n_max varied
+and n_min fixed
+```{r}
+par_grid_optstop_nmax <- expand_grid(
+  iteration = 1:n_iterations,
+  n_min = 5,
+  n_max = c(30,50,100,300),
+  k = c(1,5,10,50),
+  reporting_strategy = "not applicable" #OPEN: maybe leave out completely? especially if I am not analyzing it at all later
+)
+```
+
+```{r}
+set.seed(12345)
+
+sim_optstop_nmax <- par_grid_optstop_nmax |>
+  mutate(
+    generated_data = pmap(
+      list(n_max),
+      generate_data_ttest
+    ),
+    analysis_result = future_pmap(   # parallelising
+      .l = list(generated_data, n_min, n_max, k), 
+      .f = optional_stopping,
+      .progress = TRUE,
+      .options = furrr_options(seed = TRUE)
+    )
+  )
+```
+
+
+```{r eval=FALSE, include=FALSE}
+set.seed(12345)
+ id=as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+sim_optstop_nmax <- par_grid_optstop_nmax |>
+  mutate(
+    generated_data = pmap(
+      list(n_max),
+      generate_data_ttest
+    ),
+    analysis_result = future_pmap(   # parallelising
+      .l = list(generated_data[id,], n_min, n_max, k), 
+      .f = optional_stopping,
+      .progress = TRUE,
+      .options = furrr_options(seed = TRUE)
+    )
+  )
+
+saveRDS(sim_optstop_nmax, paste0("results/sim_optstop_nmax_",id,".rds"))
+```
+
+## simulation n_min varied
+n_min varied
+```{r sim_par_optstop}
+par_grid_optstop_nmin <- expand_grid(
+  iteration = 1:n_iterations,
+  n_min = c(5, 30, 50, 100),
+  n_max = 300,
+  k = c(1,5,10,50),
+  reporting_strategy = "not applicable"
+)
+```
+
+```{r sim_optstop}
+set.seed(12345)
+
+sim_optstop_nmin <- par_grid_optstop_nmin |>
+  mutate(
+    generated_data = pmap(
+      list(n_max),
+      generate_data_ttest
+    ),
+    analysis_result = future_pmap(   # parallelising
+      .l = list(generated_data, n_min, n_max, k),
+      .f = optional_stopping,
+      .progress = TRUE,
+      .options = furrr_options(seed = TRUE)
+    )
+  )
+```
+
+```{r}
+
+saveRDS(sim_optstop_nmax, paste0("results/sim_optstop_nmax_",n_iterations,"iterations.rds"))
+saveRDS(sim_optstop_nmin, paste0("results/sim_optstop_nmin_",n_iterations,"iterations.rds"))
+```
+
+# results
+## table 
+```{r}
+sim_optstop_nmax_summary <- sim_optstop_nmax |>
+  unnest(analysis_result) |> 
+  mutate(n_max = as.factor(n_max)#,
+         #k = as.factor(k)
+         ) |> 
+  group_by(n_max, k) |>
+  dplyr::summarize(false_positive_rate = mean(p < alpha), .groups = "drop")
+
+sim_optstop_nmax_summary
+```
+
+```{r}
+sim_optstop_nmin_summary <- sim_optstop_nmin |>
+  unnest(analysis_result) |> 
+  mutate(n_min = as.factor(n_min)#,
+         #k = as.factor(k)
+         ) |> 
+  group_by(n_min, k) |>
+  dplyr::summarize(false_positive_rate = mean(p < alpha), .groups = "drop")
+
+sim_optstop_nmin_summary
+```
+
+OPEN: potentially add number of hypothetical peeks? since they are actually what influence the FPR
+decide later. when I decide what I want to show additionally
+```{r eval=FALSE, include=FALSE}
+sim_optstop_nmax |>
+  mutate(max_peeks = length(seq(n_min, n_max, k)))
+#something something table 
+```
+
+## plots
+```{r}
+ggplot(sim_optstop_nmax_summary,
+       aes(x = k,
+           y = false_positive_rate,
+           group = n_max,
+           color = n_max)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "step size",
+    y = "False-Positive-Rate",
+    color = "n_max"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(sim_optstop_nmin_summary,
+       aes(x = k,
+           y = false_positive_rate,
+           group = n_min,
+           color = n_min)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "step size",
+    y = "False-Positive-Rate",
+    color = "n_min"
+  ) +
+  theme_minimal()
+```
+

@@ -1,0 +1,153 @@
+---
+title: "incorrect rounding"
+author: "Carolin Kirsch"
+date: "2025-12-27"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(ggtext)
+library(kableExtra)
+```
+
+```{r}
+source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
+```
+
+```{r}
+n_iterations <- 30000 # 30'000 since no reporting strategy that is varied
+alpha <- 0.05 #for exploring alterantive sig. levels the thresholds for rounding down (p_max) would need to be adapted as well
+```
+
+Round p-value down to the significance level. The maximum value $p_{max}$ that is rounded down to $\alpha = 0.05$ is varied with $p_{max} \in \{0.051, 0.6\}$.
+
+# functions
+## generate data
+
+OPEN: decide if I want to change structure to score, condition. Just for consistency reasons.
+```{r}
+generate_data <- function(n,
+                          mu = 0,
+                          sd = 1){
+  x <- rnorm(n, mu, sd)
+  y <- rnorm(n, mu, sd)
+
+  data <- tibble(x=x, y=y)
+  
+  return(data)
+}
+```
+
+## analyse data
+TO DO: put in functions file 
+TO DO: adjust for score and condition? 
+```{r}
+analyse_data <- function(data){
+  
+  result <- t.test(data$x,data$y, 
+                   alternative = "two.sided", 
+                   paired = FALSE, 
+                   var.equal = TRUE)
+  
+  p <- result$p.value
+  
+  return(p)
+}
+```
+
+## incorrect rounding
+```{r}
+incorrect_rounding <- function(p, p_max){
+  ifelse(alpha < p & p <= p_max, 
+         p_hacked <- alpha,
+         p_hacked <- p) 
+  
+  return(p_hacked)
+}
+```
+
+## reporting strategies
+don't matter here since there are no multiple tests run. And when p-hacking either the p-value is within the interval of being rounded down and hence turned significant and reported or it is not in the interval and the og p-value is reported. There is no first significant / smallest / smallest significant distinction.
+
+TO DO: verify real quick but seems to check out
+
+# simulation
+```{r}
+experiment_parameters_grid <- expand_grid(
+  n = c(30, 50, 100, 300),
+  iteration = 1:n_iterations,
+  p_max = c(0.051, 0.06),
+  reporting_strategy = c("not applicable"))
+```
+
+
+TO DO:
+- always same seed?
+- why mutate multiple times?
+```{r}
+set.seed(12345) 
+
+simulation <- 
+
+  experiment_parameters_grid |>
+  
+  mutate(generated_data = pmap(list(n),
+                               generate_data)) |>
+  
+  mutate(analysis_results = pmap(list(generated_data),
+                                 analyse_data)) |> 
+  
+  mutate(p_hacked = pmap(list(analysis_results, p_max),
+                  incorrect_rounding))
+  
+```
+
+# results
+## table 
+```{r}
+simulation_summary <- simulation |>
+  mutate(n = as.factor(n),
+         p_max = as.factor(p_max)) |> 
+  group_by(n, p_max) |>
+  dplyr::summarize(false_positive_rate = mean(p_hacked <= .05), .groups = "drop")
+
+simulation_summary
+```
+
+## plot
+TO DO but not pressing: how do I want to plot this? They didn't include it at all. Only in overview over all strategies.
+```{r}
+ggplot(simulation_summary,
+       aes(x = p_max,
+           y = false_positive_rate,
+           group = n,
+           color = n)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "p_max",
+    y = "False-Positive-Rate",
+    color = "n"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+ggplot(simulation_summary,
+       aes(x = n,
+           y = false_positive_rate,
+           group = p_max,
+           color = p_max)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "sample size",
+    y = "False-Positive-Rate",
+    color = "p_max"
+  ) +
+  theme_minimal()
+```

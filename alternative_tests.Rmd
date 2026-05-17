@@ -1,0 +1,178 @@
+---
+title: "alternative hypothesis tests"
+author: "Carolin Kirsch"
+date: "2025-12-27"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(ggtext)
+library(kableExtra)
+library(DescTools)
+```
+
+```{r}
+source("/Users/carolinkirsch/Desktop/Masterarbeit/phacking-replication/functions.R")
+```
+
+```{r}
+n_iterations <- 10000
+alpha <- 0.05
+```
+
+
+Use alternative hypothesis tests to achieve statistical significance.Conducting an independent-samples t-test, a Welch test, a Wilcoxon test and a Yuen test with four different trimming parameters,c ∈ {0.1, 0.15, 0.2, 0.25}, on the same dataset.
+
+# functions
+## data generating
+source generate_data_ttest()
+
+## data analysis / p-hacking
+```{r}
+analyse_data_alternative_tests <- function(data) {
+  tibble(
+    test = c("students", "welch", "wilcox", 
+             "yuen0.1", "yuen0.15", "yuen0.2", "yuen0.25"),
+    p_value = c(
+      t.test(score ~ condition, data, alternative = "two.sided", var.equal = TRUE)$p.value,
+      t.test(score ~ condition, data, alternative = "two.sided", var.equal = FALSE)$p.value,
+      wilcox.test(score ~ condition, data, alternative = "two.sided")$p.value,
+      YuenTTest(score ~ condition, data, alternative = "two.sided", trim = 0.1)$p.value,
+      YuenTTest(score ~ condition, data, alternative = "two.sided", trim = 0.15)$p.value,
+      YuenTTest(score ~ condition, data, alternative = "two.sided", trim = 0.2)$p.value,
+      YuenTTest(score ~ condition, data, alternative = "two.sided", trim = 0.25)$p.value
+    )
+  )
+}
+```
+
+TO DO: estimate FPR per test -> should be .05, combination should be inflated -> multiple tests
+
+## reporting strategy
+sourcing reporting_strategy_tibbles()
+
+# simulation
+```{r}
+experiment_parameters_grid <- expand_grid(
+  n_per_group = c(30, 50, 100, 300),
+  iteration = 1:n_iterations,
+  reporting_strategy = c("first significant","smallest", "smallest significant")
+)
+```
+
+```{r}
+set.seed(12345)
+
+simulation <- experiment_parameters_grid |>
+  mutate(
+    generated_data = pmap(
+      list(n_per_group, n_per_group),
+      generate_data_ttest
+    ),
+    analysis_result = map(
+      generated_data,
+      analyse_data_alternative_tests
+    ),
+    reported_result = pmap(
+      list(analysis_result, reporting_strategy),
+      reporting_strategy_tibbles
+    )
+  )
+
+saveRDS(simulation, "results/sim_alternative_tests.rds")
+```
+
+# results
+## table
+```{r}
+# summarise simulation results over the iterations ----
+simulation_summary <- simulation |>
+  unnest(reported_result) |> 
+  group_by(n_per_group) |>
+  summarize(FPR = janitor::round_half_up(mean(p_value < .05), 2))
+
+save(simulation_summary, "results/sim_summary_alterantive_tests.rds")
+
+simulation_summary
+```
+
+## plot
+
+### neded for replication
+
+```{r}
+ggplot(simulation_summary, 
+       aes(x=n_per_group,
+           y=FPR)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "sample size",
+    y = "false positive rate") +
+  ylim(0,0.5) +
+  scale_x_continuous(breaks = c(30, 50, 100, 300)) +
+  geom_hline(yintercept=alpha, colour="grey") +
+  theme_classic()
+```
+
+### add-ons?
+
+```{r}
+which_test_percentage_FPR <- simulation |>
+  unnest(reported_result) |>
+  filter(p_value <= alpha) |>
+  count(test) |>
+  mutate(percentage = n / sum(n))
+
+which_test_percentage_FPR
+```
+
+
+```{r}
+test_count_FPR_reporting <- simulation |>
+  unnest(reported_result) |>
+  filter(p_value <= alpha) |>
+  count(reporting_strategy, test) |>
+  group_by(reporting_strategy) |>
+  mutate(percentage_within_reporting_strategy = n / sum(n)) |>
+  ungroup()
+
+test_count_FPR_reporting
+```
+
+
+```{r}
+which_test_count_smallest <- simulation |>
+  filter(reporting_strategy == "smallest") |> 
+  unnest(reported_result) |> 
+  count(test) |> 
+  mutate(percentage_within_smallest = n/sum(n))
+
+which_test_count_smallest
+```
+
+```{r}
+plot_data <- simulation |>
+  unnest(reported_result) |>
+  filter(p_value <= alpha) |>
+  count(reporting_strategy, test) |>
+  group_by(reporting_strategy) |>
+  mutate(prop = n / sum(n))
+
+ggplot(plot_data, aes(x = reporting_strategy, y = prop, fill = test)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    x = "Reporting strategy",
+    y = "Proportion of reported significant results",
+    fill = "Reported test"
+  ) +
+  theme_minimal()
+
+```
+
+OPEN QUESTION: would it be interesting to see this for different sample sizes as well? resp. check if there is a difference
