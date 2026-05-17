@@ -43,8 +43,8 @@ generate_data <- function(n,
 ```
 
 ## analyse data
-TO DO: put in functions file 
-TO DO: adjust for score and condition? 
+OPEN: update to use data_generating_ttest() ?
+
 ```{r}
 analyse_data <- function(data){
   
@@ -71,7 +71,7 @@ incorrect_rounding <- function(p, p_max){
 ```
 
 ## reporting strategies
-don't matter here since there are no multiple tests run.
+doesn't matter here since there are no multiple tests run.
 
 # simulation
 ```{r}
@@ -82,10 +82,6 @@ experiment_parameters_grid <- expand_grid(
   reporting_strategy = c("not applicable"))
 ```
 
-
-TO DO:
-- always same seed?
-- why mutate multiple times?
 ```{r}
 set.seed(12345) 
 
@@ -117,7 +113,7 @@ simulation_summary
 ```
 
 ## plot
-TO DO but not pressing: how do I want to plot this? They didn't include it at all. Only in overview over all strategies.
+OPEN: how do I want to plot this? The original didn't include a plot on it.
 ```{r}
 ggplot(simulation_summary,
        aes(x = p_max,
