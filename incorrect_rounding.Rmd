@@ -71,9 +71,7 @@ incorrect_rounding <- function(p, p_max){
 ```
 
 ## reporting strategies
-don't matter here since there are no multiple tests run. And when p-hacking either the p-value is within the interval of being rounded down and hence turned significant and reported or it is not in the interval and the og p-value is reported. There is no first significant / smallest / smallest significant distinction.
-
-TO DO: verify real quick but seems to check out
+don't matter here since there are no multiple tests run.
 
 # simulation
 ```{r}
