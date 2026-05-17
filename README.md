@@ -3,6 +3,9 @@
 
 > Stefan, A. M., & Schönbrodt, F. D. (2023). Big little lies: A compendium and simulation of p-hacking strategies. *Royal Society Open Science*, *10*, 220346. https://doi.org/10.1098/rsos.220346
 
+## Overview
+Replicating the simulation studies on: optional stopping, outlier exclusion, discretizing variables, exploiting alternative hypothesis tests, and incorrect rounding.
+
 ## Repository Structure
 
 ```
