@@ -50,7 +50,7 @@ analyse_data_alternative_tests <- function(data) {
 }
 ```
 
-TO DO: estimate FPR per test -> should be .05, combination should be inflated -> multiple tests
+POSSIBLE EXTENSION: estimate FPR per test -> should be .05, combination should be inflated -> multiple tests
 
 ## reporting strategy
 sourcing reporting_strategy_tibbles()
@@ -63,7 +63,7 @@ experiment_parameters_grid <- expand_grid(
   reporting_strategy = c("first significant","smallest", "smallest significant")
 )
 ```
-
+OPEN: look up seed setting recommendations by Siepe again
 ```{r}
 set.seed(12345)
 
