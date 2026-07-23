@@ -2,24 +2,33 @@
 title: "discretizing"
 author: "Carolin Kirsch"
 date: "2026-01-22"
-output: html_document
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    latex_engine: xelatex
 ---
 
-```{r}
+```{r setup}
 library(dplyr)
 library(tidyverse)
 library(tidyr)
 library(ggplot2)
 library(ggtext)
-library(kableExtra)
+library(flextable)
+library(apa7)
+library(ftExtra)
+
+set_flextable_defaults(theme_fun = theme_apa,
+                        font.family = "Times New Roman")
 ```
 
-```{r}
+```{r source}
 source("functions.R")
 ```
 
-```{r}
-n_iterations <- 10000
+```{r general_settings}
+n_iterations <- 10000L
 alpha <- 0.05
 ```
 
@@ -29,32 +38,25 @@ Only sample size varied
 
 three mechanisms to discretize a continuous variable: we used a median split, resulting in two groups, a tertile split, resulting in three groups, and a cut-the-middle split, where the middle category is removed after a tertile split to emulate a comparison of extreme groups.
 
-univariate linear regriossion (for the
-continuous predictor),
+univariate linear regriossion (for the continuous predictor),
 two t-tests (for the median split and the cut the middle strategy),
 ANOVA (for the tertile split)
 
 # functions
-## data generating
-source generate_data_univar_linreg()
-
-## technique
+## discretizing mechanisms
 @stefan2023big didn't specify how they calculated the quantiles / if they used a function to split the data. So I assumed they used default settings for stats::quantile().
 
 ### median split
-```{r}
+```{r median_split}
 median_split <- function(data){
-  med <- median(data$x)
+  med <- quantile(data$x, 0.5)
 
-  data_med_split <- data |> 
-  
-    mutate(x_med_split = case_when(
+  data_med_split <- data |>
+    mutate(condition = case_when(
       x <= med ~ 0,
       x >  med ~ 1)) |> 
-    
-    select(y, x_med_split) |> 
-    rename(score = y,
-           condition = x_med_split)
+    mutate(condition = as.factor(condition)) |> 
+    select(score = y, condition) 
   
   p_med_split <- get_p_ttest(data_med_split) 
   
@@ -63,21 +65,21 @@ median_split <- function(data){
 ```
 
 ### tertile split
-```{r}
+```{r tertile_split}
 tertile_split <- function(data){
   
   tertile <- quantile(data$x, c(1/3, 2/3))
 
-  data_tertile_split <- data %>%
+  data_tertile_split <- data |> 
     mutate(condition = case_when(
       x <= tertile[1] ~ 0,
       x > tertile[1] & x <= tertile[2] ~ 1,
-      x > tertile[2] ~ 2)) %>%
+      x > tertile[2] ~ 2)) |> 
     mutate(condition = as.factor(condition)) |>
     select(score = y, condition)
   
   anova_model <- aov(score ~ condition, data = data_tertile_split)
-  p_tertile_split <- summary(anova_model)[[1]][["Pr(>F)"]][[1]] #extract pvalue from anova
+  p_tertile_split <- summary(anova_model)[[1]][["Pr(>F)"]][[1]] #extract p-value from anova
   
   return(p_tertile_split)
 }
@@ -86,16 +88,17 @@ tertile_split <- function(data){
 
 ### cut the middle split
 where the middle category is removed after a tertile split to emulate a comparison of extreme groups.
-```{r}
+```{r cut_middle_split}
 cut_middle_split <- function(data){
   tertile <- quantile(data$x, c(1/3, 2/3))
 
-  data_cut_middle_split <- data %>%
-    mutate(condition = case_when(
+  data_cut_middle_split <- data |> 
+    mutate(condition = case_when( 
         x <= tertile[1] ~ 0,
-        x > tertile[2] ~ 1)) %>%
+        x > tertile[2] ~ 1)) |> 
+    mutate(condition = as.factor(condition)) |> 
     select(score = y, condition) |> 
-    drop_na()
+    drop_na() # drops middle tertile which was left NA in condition assignment
   
   p_cut_middle_split <- get_p_ttest(data_cut_middle_split)
   
@@ -103,19 +106,15 @@ cut_middle_split <- function(data){
 }
 ```
 
-### continous
-source get_p_univar_linreg()
-
 ## discretizing function
-
-```{r}
+```{r discretize_hack}
 discretize <- function(data){
   p_tibble <- tibble(
-    p_value_type = c(
-      "p_lin_reg",
-      "p_med_split",
-      "p_tertile_split",
-      "p_cut_middle_split"
+    discretizing_mechanism = c(
+      "continuous predictor, linear regression",
+      "median split predictor, t-test",
+      "tertile split predictor, ANOVA",
+      "cut the middle split predictor, t-test"
     ),
     p_value = c(
       get_p_univar_linreg(data),
@@ -129,61 +128,286 @@ discretize <- function(data){
 }
 ```
 
-## reporting
-source reporting_strategy_tibbles()
-
 # simulation
-```{r}
-experiment_parameters_grid <- expand_grid(
+```{r sim_par_discretizing}
+par_grid_discretizing <- expand_grid(
   n = c(30, 50, 100, 300),
   iteration = 1:n_iterations,
   reporting_strategy = c("first significant","smallest", "smallest significant")
 )
 ```
 
-```{r}
-set.seed(12345)
+```{r sim_discretizing}
+sim_discretizing_file <- paste0("results/sim_discretizing_",n_iterations,"iterations.rds")
 
-simulation <- experiment_parameters_grid |>
-  mutate(
-    generated_data = pmap(list(n),
-      generate_data_univar_linreg
-    ),
-    analysis_result = pmap(
-      list(generated_data),
-      discretize
-    ),
-    reported_result = pmap(
-      list(analysis_result, reporting_strategy),
-      reporting_strategy_tibbles
-    )    
-  )
+if(!file.exists(sim_discretizing_file)){
+  set.seed(74392)
+
+  sim_discretizing <- par_grid_discretizing |>
+    mutate(
+      generated_data = pmap(list(n),
+        generate_data_univar_linreg
+      ),
+      analysis_result = pmap(
+        list(generated_data),
+        discretize
+      ),
+      reported_result = pmap(
+        list(analysis_result, reporting_strategy, alpha),
+        reporting_strategy_tibbles
+      )
+    )
+
+  saveRDS(sim_discretizing, sim_discretizing_file)
+} else {
+  sim_discretizing <- readRDS(sim_discretizing_file)
+}
 ```
 
 # results
-## table
-```{r}
-# summarise simulation results over the iterations ----
-simulation_summary <- simulation |>
-  unnest(reported_result) |> 
-  group_by(n) |>
-  summarize(FPR = janitor::round_half_up(mean(p_value < .05), 2))
 
-simulation_summary
+## replication table
+```{r summary_discretizing}
+sim_summary_discretizing_file <- paste0("results/sim_summary_discretizing_",n_iterations,"iterations.rds")
+
+if(!file.exists(sim_summary_discretizing_file)){
+  sim_summary_discretizing <- sim_discretizing |>
+    unnest(reported_result) |>
+    group_by(n) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < alpha),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      .groups = "drop"
+      )
+
+  saveRDS(sim_summary_discretizing, sim_summary_discretizing_file)
+} else {
+  sim_summary_discretizing <- readRDS(sim_summary_discretizing_file)
+}
+
+sim_summary_discretizing
 ```
 
-## plot
-```{r}
-ggplot(simulation_summary, 
+TO DO: row names, note, caption, etc.
+```{r flextable_repli_discretizing}
+sim_summary_discretizing |>
+  mutate(`n` = as.character(n)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (", 
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(`n`,
+         `empirical FPR (±1 MCSE)` = edr_string) |>
+  #pivot_wider(names_from = p_max,
+              #values_from = edr_string) |>
+  apa_flextable(no_format_columns = `n`) |>
+  align(j = 1, align = "center") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Baseline Sample Size" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+```{r FPR_95CI_discretizing}
+sim_summary_discretizing |> 
+  mutate(FPR_95CI_low = empirical_detection_rate - empirical_detection_rate_mcse * 1.96,
+         FPR_95CI_upp = empirical_detection_rate + empirical_detection_rate_mcse * 1.96) |> 
+  select(-empirical_detection_rate, -empirical_detection_rate_mcse)
+```
+
+
+## replication plot
+```{r plot_repli_discretizing}
+ggplot(sim_summary_discretizing, 
        aes(x=n,
-           y=FPR)) +
+           y=empirical_detection_rate)) +
+  geom_hline(yintercept=alpha, colour="grey") +
+  geom_linerange(aes(ymin = empirical_detection_rate - empirical_detection_rate_mcse,
+                     ymax = empirical_detection_rate +empirical_detection_rate_mcse)
+                , color = "black"
+                ) +
   geom_line() +
   geom_point() +
   labs(
-    x = "n_per_group",
-    y = "False-Positive-Rate") +
-  ylim(0,0.5) +
+    x = "original sample size",
+    y = "empirical false-positive-rate") +
+  theme(text = element_text(size=20)) +
+  scale_y_continuous(breaks = c(0, 0.05, 0.1, 0.2, 0.3, 0.4), limits = c(0,0.45)) +
   scale_x_continuous(breaks = c(30, 50, 100, 300)) +
-  geom_hline(yintercept=alpha, colour="grey") +
   theme_classic()
 ```
+\textit{Note.} Replicated results of the empirical false positive rates when reporting based on $p$-value significance one out of four analyses (linear regression with continuous predictor; three analyses following three different predictor discretization mechanisms). <!--TO DO chunky description that is maybe to close to OG as well -->. Lineranges would show $\pm 1$ Monte Carlo standard error (MCSE) of the emprical false-positive- rate; maximum MCSE across all conditions = .002. The grey line indicates the nominal type I error rate of $\alpha = .05$.
+
+## extension 1: isolated discretizing mechanism
+### FPR per mechanism
+```{r summary_FPR_mechanism_n_discretizing}
+sim_summary_mechanism_n_discretizing <- sim_discretizing |> 
+  unnest(analysis_result) |> 
+  group_by(n, discretizing_mechanism) |>
+  summarize(
+    empirical_detection_rate  = mean(p_value < alpha),
+    empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+    .groups = "drop"
+    )
+
+sim_summary_mechanism_n_discretizing
+```
+
+```{r FPR_95CI_isolated_analyses_n}
+sim_summary_mechanism_n_discretizing |> 
+  mutate(FPR_95CI_low = empirical_detection_rate - empirical_detection_rate_mcse * 1.96,
+         FPR_95CI_upp = empirical_detection_rate + empirical_detection_rate_mcse * 1.96) |> 
+  select(-empirical_detection_rate, -empirical_detection_rate_mcse)
+```
+
+TO DO: row names, note, caption, etc.
+```{r FPR_mechanism_n_flextable_discretizing}
+sim_summary_mechanism_n_discretizing |>
+  mutate(`n` = as.character(n),
+         discretizing_mechanism = as.character(discretizing_mechanism)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (", 
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(`n`,
+         discretizing_mechanism,
+         edr_string) |>
+  pivot_wider(names_from = discretizing_mechanism,
+              values_from = edr_string) |>
+  column_spanner_label("Discretizing mechanism and corresponding analysis", -1) |>
+  apa_flextable(no_format_columns = `n`) |>
+  align(j = 1, align = "center") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Original Sample Size and Discretizing Mechanism" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+
+```{r FPR_mechanism_discretizing}
+sim_summary_mechanism_discretizing_file <- paste0("results/sim_summary_mechanism_discretizing_",n_iterations,"iterations.rds")
+
+if(!file.exists(sim_summary_mechanism_discretizing_file)){
+  sim_summary_mechanism_discretizing <- sim_discretizing |>
+    unnest(analysis_result) |>
+    group_by(discretizing_mechanism) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < alpha),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      .groups = "drop"
+      )
+
+  saveRDS(sim_summary_mechanism_discretizing, sim_summary_mechanism_discretizing_file)
+} else {
+  sim_summary_mechanism_discretizing <- readRDS(sim_summary_mechanism_discretizing_file)
+}
+
+sim_summary_mechanism_discretizing
+```
+
+TO DO: row names, note, caption, etc.
+```{r FPR_mechanism_flextable_discretizing}
+sim_summary_mechanism_discretizing |>
+  mutate(discretizing_mechanism = as.character(discretizing_mechanism)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (",
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(`Discretizing mechanism and corresponding analysis` = discretizing_mechanism,
+         `empirical FPR (±1 MCSE)` = edr_string) |>
+  apa_flextable(no_format_columns = `Discretizing mechanism and corresponding analysis`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Discretizing Mechanism" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+
+```{r FPR_95CI_isolated_analyses_}
+sim_summary_mechanism_discretizing |> 
+  mutate(FPR_95CI_low = empirical_detection_rate - empirical_detection_rate_mcse * 1.96,
+         FPR_95CI_upp = empirical_detection_rate + empirical_detection_rate_mcse * 1.96) |> 
+  select(-empirical_detection_rate, -empirical_detection_rate_mcse)
+```
+
+### count mechanisms within significant FP results
+```{r}
+discretizing_mechanism_percentage_FPresults <- sim_discretizing |>
+  unnest(analysis_result) |>
+  filter(p_value < alpha) |> #out of the FP results
+  count(discretizing_mechanism) |> # which predictor mechanism was used
+  mutate(percentage = n / sum(n))
+
+discretizing_mechanism_percentage_FPresults
+```
+
+
+## extension 2: reporting strategy
+
+### mechanism & reporting
+has to do with a) order of implementation for first significant and b) with p-value distribution for the other two (I think at leas. So currently I assume that median split does lead to smaller p-values. Possibly has to do with power? at least it has the most power out of the discretizing mechanisms. For the comparisons with baseline I am not sure what the mechanism is)
+
+TO DO: 1) decide whether to keep or not 2) maybe rename "n"?
+```{r}
+discretizing_mechanism_percentage_reported_results <- sim_discretizing |>
+  unnest(reported_result) |>
+  filter(p_value < alpha) |> #out of the FP results
+  count(discretizing_mechanism) |> # which predictor mechanism was used
+  mutate(percentage = n / sum(n))
+
+discretizing_mechanism_percentage_reported_results
+```
+
+```{r}
+mechanism_count_reported_results <- sim_discretizing |>
+  unnest(reported_result) |>
+  filter(p_value < alpha) |>
+  count(reporting_strategy, discretizing_mechanism) |>
+  group_by(reporting_strategy) |>
+  mutate(percentage_within_reporting_strategy = n / sum(n)) |>
+  ungroup()
+
+mechanism_count_reported_results
+```
+
+TO DO: row names, note, caption, etc.
+TO DO: would need different order to be readable
+```{r mechanism_count_FPR_flextable_discretizing}
+mechanism_count_reported_results |>
+  mutate(`reporting strategy` = as.character(reporting_strategy),
+         discretizing_mechanism = as.factor(discretizing_mechanism)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  select(`reporting strategy`,
+         discretizing_mechanism,
+         percentage_within_reporting_strategy) |>
+  pivot_wider(names_from = discretizing_mechanism,
+              values_from = percentage_within_reporting_strategy) |>
+  column_spanner_label("Discretizing mechanism and corresponding analysis", -1) |>
+  apa_flextable(no_format_columns = `reporting strategy`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note.")))
+```
+<!-- caption for quarto integration: "Percentages of Discretizing Mechanisms within Reported False-Positive Analysis Results" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+
+### FPR & reporting
+```{r summary_FPR_reporting}
+sim_discretizing_summary_reporting <- sim_discretizing |> 
+  unnest(reported_result) |> 
+  group_by(reporting_strategy) |>
+  summarize(
+    empirical_detection_rate  = mean(p_value < alpha),
+    empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+    .groups = "drop"
+    )
+
+sim_discretizing_summary_reporting
+```
+
+```{r}
+sessionInfo()
+```
+
+```{r}
+writeLines(capture.output(sessionInfo()), paste0("results/discretizing_sessionInfo_", n_iterations, "iterations.rds"))
+```
+
+

@@ -1,5 +1,4 @@
 # data generating functions
-
 ## for t-test
 
 generate_data_ttest <- function(n_control,
@@ -58,31 +57,37 @@ get_p_univar_linreg <- function(data){
 # reporting strategy
 # function to report a p-value based on the chosen strategy
 
-reporting_strategy_tibbles <- function(results_tibble, strategy) {
+reporting_strategy_tibbles <- function(results_tibble, strategy, alpha = 0.05) {
   
   if (strategy == "smallest") {
     
-    results_tibble |> 
-      slice_min(p_value, n = 1) 
+    reported_tibble <- results_tibble |> 
+      slice_min(p_value, n = 1, with_ties = FALSE)
     
   } else if (strategy == "first significant") {
     
-    sig <- results_tibble |> filter(p_value <= 0.05)
+    sig <- results_tibble |> filter(p_value < alpha) # attention non-inclusive is a problem if it were to be applied to incorrect rounding!
     
     if (nrow(sig) > 0) {
-      sig |> slice(1)
+      reported_tibble <- sig |> slice(1)
     } else {
-      results_tibble |> slice(1)
+      reported_tibble <- results_tibble |> slice(1)
     }
     
   } else if (strategy == "smallest significant") {
     
-    sig <- results_tibble |> filter(p_value <= 0.05)
+    sig <- results_tibble |> filter(p_value < alpha) # attention non-inclusive is a problem if it were to be applied to incorrect rounding!
     
     if (nrow(sig) > 0) {
-      sig |> slice_min(p_value, n = 1)
+      reported_tibble <- sig |> slice_min(p_value, n = 1, with_ties = FALSE)
     } else {
-      results_tibble |> slice(1)
+      reported_tibble <- results_tibble |> slice(1)
     }
   }
+  
+  #if (nrow(reported_tibble) > 1) 
+  
+  return(reported_tibble)
 }
+
+

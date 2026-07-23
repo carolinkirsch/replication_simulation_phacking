@@ -1,0 +1,231 @@
+---
+title: "alternative tests WRS2 (no Welch)"
+author: "Carolin Kirsch"
+date: "2026-07-18"
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(ggtext)
+library(flextable)
+library(apa7)
+library(ftExtra)
+library(WRS2)
+
+set_flextable_defaults(theme_fun = theme_apa,
+                        font.family = "Times New Roman")
+```
+
+```{r source}
+source("functions.R")
+```
+
+```{r general_seettings}
+n_iterations <- 10000L
+alpha <- 0.05
+```
+
+Use alternative hypothesis tests to achieve statistical significance.Conducting an independent-samples t-test, a Wilcoxon test and a Yuen test with four different trimming parameters,c ∈ {0.1, 0.15, 0.2, 0.25}, on the same dataset. (Welch test excluded in this variant.)
+
+# functions
+## data analysis alternative tests
+```{r alttests_wrs2_nowelch}
+analyse_data_alttests_wrs2_nowelch <- function(data) {
+  tibble(
+    test = c("students", #"welch",
+             "wilcox",
+             "yuen0.1", "yuen0.15", "yuen0.2", "yuen0.25"),
+    p_value = c(
+      t.test(score ~ condition, data, alternative = "two.sided", var.equal = TRUE)$p.value,
+      #t.test(score ~ condition, data, alternative = "two.sided", var.equal = FALSE)$p.value,
+      wilcox.test(score ~ condition, data, alternative = "two.sided")$p.value,
+      yuen(score ~ condition, data, tr = 0.1)$p.value,
+      yuen(score ~ condition, data, tr = 0.15)$p.value,
+      yuen(score ~ condition, data, tr = 0.2)$p.value,
+      yuen(score ~ condition, data, tr = 0.25)$p.value
+    )
+  )
+}
+```
+
+# simulation
+```{r sim_par_alttests_wrs2_nowelch}
+par_grad_alttests_wrs2_nowelch <- expand_grid(
+  n = c(30, 50, 100, 300),
+  iteration = 1:n_iterations,
+  reporting_strategy = c("first significant","smallest", "smallest significant")
+)
+```
+
+```{r sim_alt_tests}
+sim_alttests_wrs2_nowelch_file <- paste0("results/sim_alttests_wrs2_nowelch_",n_iterations,"iterations.rds")
+
+if(!file.exists(sim_alttests_wrs2_nowelch_file)){
+  set.seed(8974)
+
+  sim_alttests_wrs2_nowelch <- par_grad_alttests_wrs2_nowelch |>
+    mutate(
+      generated_data = pmap(
+        list(n),
+        generate_data_ttest
+      ),
+      analysis_result = map(
+        generated_data,
+        analyse_data_alttests_wrs2_nowelch
+      ),
+      reported_result = pmap(
+        list(analysis_result, reporting_strategy, alpha),
+        reporting_strategy_tibbles
+      )
+    )
+
+  saveRDS(sim_alttests_wrs2_nowelch, sim_alttests_wrs2_nowelch_file)
+} else {
+  sim_alttests_wrs2_nowelch <- readRDS(sim_alttests_wrs2_nowelch_file)
+}
+```
+
+# results
+
+## replication table
+```{r summary_alt_tests}
+sim_summary_alttests_wrs2_nowelch_file <- paste0("results/sim_summary_alttests_wrs2_nowelch_",n_iterations,"iterations.rds")
+
+if(!file.exists(sim_summary_alttests_wrs2_nowelch_file)){
+  sim_summary_alttests_wrs2_nowelch <- sim_alttests_wrs2_nowelch |>
+    unnest(reported_result) |>
+    group_by(n) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < alpha),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      .groups = "drop"
+      ) |>
+    mutate(
+      empirical_detection_rate_95CI_low = empirical_detection_rate - empirical_detection_rate_mcse * 1.96,
+      empirical_detection_rate_95CI_upp = empirical_detection_rate + empirical_detection_rate_mcse * 1.96,
+    )
+
+  saveRDS(sim_summary_alttests_wrs2_nowelch, sim_summary_alttests_wrs2_nowelch_file)
+} else {
+  sim_summary_alttests_wrs2_nowelch <- readRDS(sim_summary_alttests_wrs2_nowelch_file)
+}
+
+sim_summary_alttests_wrs2_nowelch
+```
+
+TO DO: row names, note, caption, etc.
+```{r flextable_repli_alt_tests}
+sim_summary_alttests_wrs2_nowelch |>
+  mutate(`n per condition` = as.character(n)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (", 
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(`n per condition`,
+         `empirical FPR (±1 MCSE)` = edr_string) |>
+  #pivot_wider(names_from = p_max,
+              #values_from = edr_string) |>
+  apa_flextable(no_format_columns = `n per condition`) |>
+  align(j = 1, align = "center") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Sample Size" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+
+## replication plot
+```{r plot_repli_alt_tests}
+ggplot(sim_summary_alttests_wrs2_nowelch, 
+       aes(x=n,
+           y=empirical_detection_rate)) +
+  geom_hline(yintercept=alpha, colour="grey") +
+  geom_linerange(aes(ymin = empirical_detection_rate - empirical_detection_rate_mcse,
+                     ymax = empirical_detection_rate +empirical_detection_rate_mcse)
+                , color = "black"
+                ) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "sample size per group",
+    y = "empirical false-positive-rate") +
+  theme(text = element_text(size=20)) +
+  scale_y_continuous(breaks = c(0, 0.05, 0.1, 0.2, 0.3, 0.4), limits = c(0,0.45)) +
+  scale_x_continuous(breaks = c(30, 50, 100, 300)) +
+  theme_classic()
+```
+
+## extension 1: FPR per test
+```{r summary_FPR_test_n_alt_tests}
+sim_summary_test_n_alttests_wrs2_nowelch_file <- paste0("results/sim_summary_test_n_alttests_wrs2_nowelch_",n_iterations,"iterations.rds")
+
+if(!file.exists(sim_summary_test_n_alttests_wrs2_nowelch_file)){
+  sim_summary_test_n_alttests_wrs2_nowelch <- sim_alttests_wrs2_nowelch |>
+    unnest(analysis_result) |>
+    group_by(n, test) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < alpha),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      .groups = "drop"
+      )
+
+  saveRDS(sim_summary_test_n_alttests_wrs2_nowelch, sim_summary_test_n_alttests_wrs2_nowelch_file)
+} else {
+  sim_summary_test_n_alttests_wrs2_nowelch <- readRDS(sim_summary_test_n_alttests_wrs2_nowelch_file)
+}
+
+sim_summary_test_n_alttests_wrs2_nowelch
+```
+
+TO DO: row names, note, caption, etc.
+```{r FPR_test_n_flextable_alt_tests}
+sim_summary_test_n_alttests_wrs2_nowelch |>
+  mutate(`n per condition` = as.character(n),
+         test = as.character(test)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (", 
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(`n per condition`,
+         test,
+         edr_string) |>
+  pivot_wider(names_from = test,
+              values_from = edr_string) |>
+  column_spanner_label("Hypothesis test", -1) |>
+  apa_flextable(no_format_columns = `n per condition`) |>
+  align(j = 1, align = "center") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Hypothesis Test and Sample Size" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+
+```{r FPR_test_alt_tests}
+sim_summary_test_alttests_wrs2_nowelch <- sim_alttests_wrs2_nowelch |> 
+  unnest(analysis_result) |> 
+  group_by(test) |>
+  summarize(
+    empirical_detection_rate  = mean(p_value < alpha),
+    empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+    .groups = "drop"
+    ) |> 
+  mutate(
+    empirical_detection_rate_95CI_low = empirical_detection_rate - empirical_detection_rate_mcse * 1.96,
+    empirical_detection_rate_95CI_upp = empirical_detection_rate + empirical_detection_rate_mcse * 1.96,
+  )
+
+sim_summary_test_alttests_wrs2_nowelch
+```
+OPEN: does this also need a flextable table? or could I maybe include it as sum row in the upper table?
+
+```{r}
+sessionInfo()
+```
+
