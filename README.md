@@ -127,15 +127,13 @@ session-info files are included.
 
 If you use this material, please cite the thesis and the original study:
 
-- Kirsch, C. (2026). *Replication of p-hacking simulation studies* [Master's thesis,
-  University of Bern].
-- Stefan, A. M., & Schönbrodt, F. D. (2023). Big little lies: A compendium and simulation of
-  p-hacking strategies. *Royal Society Open Science, 10*(2), 220346.
-  https://doi.org/10.1098/rsos.220346
+Stefan & Schönbrodt (2023), *Big Little Lies: A Compendium and Simulation of p-Hacking Strategies*
+
+- Kirsch, C. (2026). _Replicating and Extending Stefan & Schönbrodt (2023) "Big Little Lies: A Compendium and Simulation of p-Hacking Strategies"_ [Master's thesis, University of Bern].
+- Stefan, A. M., & Schönbrodt, F. D. (2023). Big little lies: A compendium and simulation of p-hacking strategies. _Royal Society Open Science, 10_(2), 220346. https://doi.org/10.1098/rsos.220346
 
 ## References
 
-- Luijken, K., et al. (2024). Replicability of simulation studies.
-- Morris, T. P., White, I. R., & Crowther, M. J. (2019). Using simulation studies to evaluate
-  statistical methods. *Statistics in Medicine, 38*(11), 2074–2102.
-- Siepe, B. S., et al. (2024). Simulation studies for methodological research in psychology.
+- Luijken, K., Lohmann, A., Alter, U., Claramunt Gonzalez, J., Clouth, F. J., Fossum, J. L., Hesen, L., Huizing, A. H. J., Ketelaar, J., Montoya, A. K., Nab, L., Nijman, R. C. C., Penning De Vries, B. B. L., Tibbe, T. D., Wang, Y. A., & Groenwold, R. H. H. (2024). Replicability of simulation studies for the investigation of statistical methods: The RepliSims project. _Royal Society Open Science, 11_(1), 231003. https://doi.org/10.1098/rsos.231003
+- Morris, T. P., White, I. R., & Crowther, M. J. (2019). Using simulation studies to evaluate statistical methods. _Statistics in Medicine, 38_(11), 2074–2102. https://doi.org/10.1002/sim.8086
+- Siepe, B. S., Bartoš, F., Morris, T. P., Boulesteix, A.-L., Heck, D. W., & Pawel, S. (2024). Simulation studies for methodological research in psychology: A standardized template for planning, preregistration, and reporting. _Psychological Methods_. Advance online publication. https://doi.org/10.1037/met0000695
