@@ -127,8 +127,6 @@ session-info files are included.
 
 If you use this material, please cite the thesis and the original study:
 
-Stefan & Schönbrodt (2023), *Big Little Lies: A Compendium and Simulation of p-Hacking Strategies*
-
 - Kirsch, C. (2026). _Replicating and Extending Stefan & Schönbrodt (2023) "Big Little Lies: A Compendium and Simulation of p-Hacking Strategies"_ [Master's thesis, University of Bern].
 - Stefan, A. M., & Schönbrodt, F. D. (2023). Big little lies: A compendium and simulation of p-hacking strategies. _Royal Society Open Science, 10_(2), 220346. https://doi.org/10.1098/rsos.220346
 
