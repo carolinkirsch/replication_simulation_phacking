@@ -21,8 +21,10 @@ results_UBELIX/sim_*.rds
 reproduction_rounding/.RData
 reproduction_rounding/old/
 
-# Re-include the small tracked files even though sim_* is ignored above:
-!results/sim_summary_*.rds
+# ...but DO keep the small aggregated summaries the results docs read (any *summary* file,
+# including the HPC ones named sim_<x>_summary_*.rds):
+!results/*summary*.rds
+!results_UBELIX/*summary*.rds
 
 # --- Knitr / Quarto caches & freeze ---
 *_cache/

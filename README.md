@@ -50,8 +50,8 @@ estimated (up to 30,000 iterations per condition), reporting Monte Carlo standar
 │                                   #   phackR_repro_roundHack.Rmd = reproduction + corrected FPR
 │                                   #   (inlines/links original code — third-party MIT, see NOTICE.md)
 │
-├── results/                        # session info, RNG state, small aggregated summaries
-├── results_UBELIX/                 # session info + RNG state for the two HPC studies
+├── results/                        # session info + small aggregated summaries (local studies); see results/README.md
+├── results_UBELIX/                 # session info, RNG state + summaries for the two HPC studies
 │
 ├── supplementary/                  # Supplementary Material (rendered HTML) + index
 │
