@@ -1,0 +1,412 @@
+---
+title: "outlier results"
+author: "Carolin Kirsch"
+date: "2026-07-02"
+output:
+  html_document: default
+  word_document: default
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(flextable)
+library(apa7)
+library(ftExtra)
+library(Dict)
+
+set_flextable_defaults(theme_fun = theme_apa,
+                        font.family = "Times New Roman")
+```
+
+```{r}
+alpha <- 0.05
+n_iterations <- 10000L
+ALL_TECHNIQUES <- c(
+  "boxplot", "stemleaf", "SD",
+  "percentage", "student", "standardized",
+  "DFBETA", "DFFITS", "cook",
+  "mahalanobis", "leverage", "covratio"
+)
+
+sim_out_seq_summary_file <- paste0("results_UBELIX/sim_out_seq_summary_",n_iterations,"iterations.rds")
+out_seq_technique_per_strategy_file <- paste0("results_UBELIX/out_seq_technique_per_strategy_",n_iterations,"iterations.rds")
+sim_out_single_summary_file <- paste0("results_UBELIX/sim_out_single_summary_",n_iterations,"iterations.rds")
+technique_lasttest_summary_file <- paste0("results_UBELIX/technique_lasttest_summary_",n_iterations,"iterations.rds")
+```
+
+```{r}
+# raw simulation data is only loaded when a downstream cache is missing
+sim_out_seq <- if (!file.exists(sim_out_seq_summary_file) || !file.exists(out_seq_technique_per_strategy_file)) {
+  readRDS(paste0("results_UBELIX/sim_out_seq_",n_iterations,"iterations.rds"))
+}
+
+sim_out_single <- if (!file.exists(sim_out_single_summary_file) || !file.exists(technique_lasttest_summary_file)) {
+  readRDS(paste0("results_UBELIX/sim_out_single_",n_iterations,"iterations.rds"))
+}
+```
+
+
+# results
+OPEN: kinda weird inbetween with alpha sometimes hard coded sometimes not
+
+## replication table
+```{r}
+if(!file.exists(sim_out_seq_summary_file)){
+  sim_out_seq_summary <- sim_out_seq |>
+    mutate(n_tests = map_int(analysis_result, nrow)) |>
+    unnest(reported_result) |>
+    group_by(n, number_techniques) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < 0.05),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      mean_n_tests = mean(n_tests),
+      min_n_tests = min(n_tests),
+      max_n_tests = max(n_tests),
+      .groups = "drop"
+      )
+
+  saveRDS(sim_out_seq_summary, sim_out_seq_summary_file)
+} else {
+  sim_out_seq_summary <- readRDS(sim_out_seq_summary_file)
+}
+
+sim_out_seq_summary
+```
+
+TO DO: row names, note, caption, etc.
+```{r out_seq_flextable_table}
+sim_out_seq_summary |>
+  mutate(n = as.character(n),
+         `no. outlier detection techniques` = paste0(number_techniques, " techniques"),
+         `no. tests` = scales::number(mean_n_tests, accuracy = 0.01)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(`FPR (MCSE)` = paste0(empirical_detection_rate,
+                             " (",
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(n,
+         `no. outlier detection techniques`,
+         `FPR (MCSE)`,
+         `no. tests`) |>
+  pivot_wider(names_from = `no. outlier detection techniques`,
+              values_from = c(`FPR (MCSE)`, `no. tests`),
+              names_glue = "{`no. outlier detection techniques`}_{.value}",
+              names_vary = "slowest"
+              ) |>
+  #column_spanner_label("no. outlier detection techniques") |>
+  apa_flextable(no_format_columns = n, add_breaks_between_spanners = TRUE) |>
+  align(j = 1, align = "center") |> 
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "FPR (MCSE) = empirical false-positive rate (±1 Monte Carlo Standard Error). no. tests = mean number of distinct tests conducted per iteration."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) and Mean No. of Tests by Sample Size and No. of Outlier Detection Techniques" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+## replication plot
+```{r out_seq_plot_repli}
+ggplot(sim_out_seq_summary,
+       aes(x = number_techniques,
+           y = empirical_detection_rate,
+           color = as.factor(n))) +
+  geom_hline(yintercept = 0.05, col = "grey") +
+  geom_linerange(aes(ymin = empirical_detection_rate - empirical_detection_rate_mcse,
+                     ymax = empirical_detection_rate + empirical_detection_rate_mcse)
+                , color = "black") +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(breaks = c(0, 0.05, 0.1, 0.2, 0.3, 0.4), limits = c(0,0.45)) +
+  scale_x_continuous(breaks = c(3, 5, 12)) +
+  labs(
+    x = "no. outlier detection techniques",
+    y = "empirical false-positive-rate",
+    color = "sample size") +
+  theme_classic()
+```
+
+## extension 1: outlier detection technique within reported FPR results by reporting strategy
+```{r out_seq_technique_per_strategy}
+if(!file.exists(out_seq_technique_per_strategy_file)){
+  reported_technique_percentage_by_strategy <- sim_out_seq |>
+    unnest(reported_result) |>
+    mutate(technique = factor(technique, levels = c("original", ALL_TECHNIQUES))) |>
+    filter(p_value < alpha) |>
+    count(reporting_strategy, technique, .drop = FALSE) |>
+    group_by(reporting_strategy) |>
+    mutate(percentage_within_reporting_strategy = n / sum(n)) |>
+    ungroup()
+
+  saveRDS(reported_technique_percentage_by_strategy, out_seq_technique_per_strategy_file)
+} else {
+  reported_technique_percentage_by_strategy <- readRDS(out_seq_technique_per_strategy_file)
+}
+
+reported_technique_percentage_by_strategy
+```
+
+TO DO: row names, note, caption, etc.
+```{r out_seq_technique_per_strategy_flextable}
+reported_technique_percentage_by_strategy |>
+  mutate(`reporting strategy` = as.character(reporting_strategy),
+         technique = as.character(technique)) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  select(`reporting strategy`,
+         technique,
+         percentage_within_reporting_strategy) |>
+  pivot_wider(names_from = technique,
+              values_from = percentage_within_reporting_strategy) |>
+  column_spanner_label("Outlier detection technique", -1) |>
+  apa_flextable(no_format_columns = `reporting strategy`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note.")))
+```
+<!-- caption for quarto integration: "Percentages of Outlier Detection Technique within Reported False-Positive Analysis Results, by Reporting Strategy" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+## extension 2: FPR by outlier detection technique
+TO DO: Do I want to include the numbers? If yes only in the flextable table?
+```{r}
+# only needed when a downstream cache (sim_out_single_summary or technique_lasttest_summary) is missing
+sim_out_single_factor <- if (!file.exists(sim_out_single_summary_file) || !file.exists(technique_lasttest_summary_file)) {
+  sim_out_single |>
+    mutate(outlier_technique = factor(outlier_technique, levels = ALL_TECHNIQUES))
+}
+```
+
+```{r}
+if(!file.exists(sim_out_single_summary_file)){
+  sim_out_single_summary <- sim_out_single_factor |>
+    mutate(n_tests = map_int(analysis_result, nrow)) |>
+    unnest(reported_result) |>
+    group_by(outlier_technique, n) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < 0.05),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      mean_n_tests = mean(n_tests),
+      min_n_tests = min(n_tests),
+      max_n_tests = max(n_tests),
+      .groups = "drop"
+      )
+
+  saveRDS(sim_out_single_summary, sim_out_single_summary_file)
+} else {
+  sim_out_single_summary <- readRDS(sim_out_single_summary_file)
+}
+
+sim_out_single_summary
+```
+
+TO DO: row names, note, caption, etc.
+```{r out_single_flextable_table}
+sim_out_single_summary |>
+  mutate(n = as.character(n),
+         `outlier detection technique` = outlier_technique) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (",
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(n,
+         `outlier detection technique`,
+         edr_string) |>
+  pivot_wider(names_from = n,
+              values_from = edr_string) |>
+  column_spanner_label("sample size", c(`30`, `50`, `100`, `300`)) |>
+  apa_flextable(no_format_columns = `outlier detection technique`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Sample Size and Outlier Detection Technique" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+TO DO: row names, note, caption, etc.
+```{r out_single_ntests_flextable_table}
+sim_out_single_summary |>
+  mutate(n = as.character(n),
+         `outlier detection technique` = outlier_technique) |>
+  mutate(ntests_string = paste0(
+    scales::number(mean_n_tests, accuracy = 0.01),
+    " (", min_n_tests, "–", max_n_tests, ")"
+    )) |>
+  select(n,
+         `outlier detection technique`,
+         ntests_string) |>
+  pivot_wider(names_from = n,
+              values_from = ntests_string) |>
+  column_spanner_label("sample size", c(`30`, `50`, `100`, `300`)) |>
+  apa_flextable(no_format_columns = `outlier detection technique`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values are mean (min–max) number of distinct tests conducted per iteration."))
+```
+<!-- caption for quarto integration: "Mean (Min–Max) Number of Distinct Tests Conducted by Sample Size and Outlier Detection Technique" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+### technique comparison plot (dot plot)
+```{r out_single_plot_dot}
+ggplot(sim_out_single_summary,
+       aes(x = empirical_detection_rate,
+           y = fct_reorder(outlier_technique, empirical_detection_rate),
+           color = as.factor(n))) +
+  geom_vline(xintercept = 0.05, col = "grey") +
+  # geom_linerange(aes(xmin = empirical_detection_rate - empirical_detection_rate_mcse, 
+  #                    xmax = empirical_detection_rate + empirical_detection_rate_mcse),
+  #                position = position_dodge(width = 0.6), 
+  #                color = "black") +
+  geom_point(aes(size = mean_n_tests), position = position_dodge(width = 0.6)) +
+  scale_size(range = c(1, 8)) +
+  labs(
+    x = "empirical false-positive-rate",
+    y = "outlier detection technique",
+    color = "sample size",
+    size = "mean no. of tests") +
+  theme_classic()
+```
+
+### technique x sample size plot (facets)
+```{r out_single_plot_facets}
+ggplot(sim_out_single_summary,
+       aes(x = n, y = empirical_detection_rate)) +
+  geom_hline(yintercept = 0.05, colour = "grey") +
+  geom_linerange(aes(ymin = empirical_detection_rate - empirical_detection_rate_mcse,
+                     ymax = empirical_detection_rate + empirical_detection_rate_mcse),
+                 color = "black") +
+  geom_line() +
+  geom_point() +
+  geom_text(aes(label = scales::number(mean_n_tests, accuracy = 1)),
+            nudge_x = 1, vjust = -0.8, size = 3,
+            show.legend = FALSE) +
+  facet_wrap(~ outlier_technique, ncol = 4) +
+  scale_x_continuous(breaks = c(30, 50, 100, 300)) +
+  scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4), limits = c(0,0.45)) +
+  labs(
+    x = "sample size",
+    y = "empirical false-positive-rate") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6))
+```
+
+## extension 3: FPR by technique without multiple testing
+```{r}
+if(!file.exists(technique_lasttest_summary_file)){
+  technique_lasttest_results <- sim_out_single_factor |>
+    mutate(analysis_result = map(analysis_result, \(x) slice_tail(x, n = 1))) |>
+    unnest(analysis_result)
+
+  technique_lasttest_summary <- technique_lasttest_results |>
+    group_by(outlier_technique, n) |>
+    summarize(
+      empirical_detection_rate  = mean(p_value < 0.05),
+      empirical_detection_rate_mcse = sqrt(empirical_detection_rate * (1 - empirical_detection_rate) / n()),
+      .groups = "drop"
+      )
+
+  saveRDS(technique_lasttest_summary, technique_lasttest_summary_file)
+} else {
+  technique_lasttest_summary <- readRDS(technique_lasttest_summary_file)
+}
+
+technique_lasttest_summary
+```
+
+TO DO: row names, note, caption, etc.
+```{r out_lasttest_flextable_table}
+technique_lasttest_summary |>
+  mutate(n = as.character(n),
+         `outlier detection technique` = outlier_technique) |>
+  mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
+  mutate(edr_string = paste0(empirical_detection_rate,
+                             " (",
+                             empirical_detection_rate_mcse,
+                             ")")) |>
+  select(n,
+         `outlier detection technique`,
+         edr_string) |>
+  pivot_wider(names_from = n,
+              values_from = edr_string) |>
+  column_spanner_label("sample size", c(`30`, `50`, `100`, `300`)) |>
+  apa_flextable(no_format_columns = `outlier detection technique`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+```
+<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Sample Size and Outlier Detection Technique, Using Only the Last Test per Iteration (No Multiple Testing)" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+```{r out_lasttest_plot_facets}
+ggplot(technique_lasttest_summary,
+       aes(x = n, y = empirical_detection_rate)) +
+  geom_hline(yintercept = 0.05, colour = "grey") +
+  geom_linerange(aes(ymin = empirical_detection_rate - empirical_detection_rate_mcse,
+                     ymax = empirical_detection_rate + empirical_detection_rate_mcse),
+                 color = "black") +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ outlier_technique, ncol = 4) +
+  scale_x_continuous(breaks = c(30, 50, 100, 300)) +
+  labs(
+    x = "sample size",
+    y = "empirical false-positive-rate") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6))
+```
+
+## comparison: FPR inflation from multiple testing (single vs. lasttest)
+TO DO: row names, note, caption, etc.
+```{r out_single_vs_lasttest_diff_flextable_table}
+sim_out_single_summary |>
+  select(outlier_technique, n,
+         fpr_single = empirical_detection_rate) |>
+  left_join(
+    technique_lasttest_summary |>
+      select(outlier_technique, n,
+             fpr_lasttest = empirical_detection_rate),
+    by = c("outlier_technique", "n")
+  ) |>
+  mutate(n = as.character(n),
+         `outlier detection technique` = outlier_technique,
+         diff = scales::number(fpr_single - fpr_lasttest, accuracy = 0.001)) |>
+  select(n, `outlier detection technique`, diff) |>
+  pivot_wider(names_from = n, values_from = diff) |>
+  column_spanner_label("sample size", c(`30`, `50`, `100`, `300`)) |>
+  apa_flextable(no_format_columns = `outlier detection technique`) |>
+  align(j = 1, align = "left") |>
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values are FPR_single - FPR_lasttest, i.e. the empirical FPR under implicit multiple testing across candidate techniques minus the empirical FPR of a single test with no multiple testing. Both estimates are computed on the same simulated iterations (paired), so no combined MCSE is reported."))
+```
+<!-- caption for quarto integration: "Difference in Empirical False Positive Rate Attributable to Multiple Testing, by Sample Size and Outlier Detection Technique" -- will be set via #| tbl-cap in the .qmd chunk -->
+
+```{r out_single_vs_lasttest_stacked_plot}
+comparison <- sim_out_single_summary |>
+  select(outlier_technique, n, fpr_single = empirical_detection_rate, mean_n_tests) |>
+  left_join(
+    technique_lasttest_summary |>
+      select(outlier_technique, n, fpr_lasttest = empirical_detection_rate),
+    by = c("outlier_technique", "n")
+  )
+
+comparison_long <- comparison |>
+  mutate(`additional FPR from multiple testing` = pmax(fpr_single - fpr_lasttest, 0)) |>
+  rename(`baseline FPR (single test, no multiple testing)` = fpr_lasttest) |>
+  select(outlier_technique, n,
+         `baseline FPR (single test, no multiple testing)`,
+         `additional FPR from multiple testing`) |>
+  pivot_longer(cols = c(`baseline FPR (single test, no multiple testing)`,
+                        `additional FPR from multiple testing`),
+               names_to = "component", values_to = "value") |>
+  mutate(component = factor(component,
+                             levels = c("additional FPR from multiple testing",
+                                        "baseline FPR (single test, no multiple testing)")))
+
+ggplot(comparison_long, aes(x = as.factor(n), y = value, fill = component)) +
+  geom_col(position = position_stack(reverse = FALSE)) +
+  geom_hline(yintercept = 0.05, colour = "black", linetype = "dashed") +
+  geom_text(data = comparison,
+            aes(x = as.factor(n), y = fpr_single, label = scales::number(mean_n_tests, accuracy = 1)),
+            inherit.aes = FALSE, vjust = -0.8, size = 3) +
+  facet_wrap(~ outlier_technique, ncol = 4) +
+  scale_fill_manual(values = c("baseline FPR (single test, no multiple testing)" = "grey70",
+                                "additional FPR from multiple testing" = "grey30")) +
+  labs(
+    x = "sample size",
+    y = "empirical false-positive-rate",
+    fill = NULL) +
+  scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4), limits = c(0,0.45)) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6),
+        legend.position = "bottom")
+```

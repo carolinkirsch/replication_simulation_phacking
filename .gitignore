@@ -1,0 +1,31 @@
+# --- R / RStudio session artifacts ---
+.Rproj.user/
+.Rhistory
+.RData
+.RDataTmp*
+.Ruserdata
+.Rprofile
+.positai
+
+# --- OS / editor cruft ---
+.DS_Store
+*~
+
+# --- Large regenerable simulation output (NOT distributed; see README) ---
+# The raw simulation objects can be several hundred MB each and exceed GitHub's
+# 100 MB file limit. They are reproducible by re-running the *_run_sim.R scripts
+# (fixed seeds + session info are provided). Keep only the small aggregated
+# summaries and session-info / RNG-state files that ARE tracked.
+results/sim_*.rds
+results_UBELIX/sim_*.rds
+reproduction_rounding/.RData
+reproduction_rounding/old/
+
+# Re-include the small tracked files even though sim_* is ignored above:
+!results/sim_summary_*.rds
+
+# --- Knitr / Quarto caches & freeze ---
+*_cache/
+*_files/
+_freeze/
+/figure/
