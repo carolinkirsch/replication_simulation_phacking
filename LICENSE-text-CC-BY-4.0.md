@@ -22,8 +22,3 @@ https://creativecommons.org/licenses/by/4.0/legalcode
 
 A human-readable summary is available at:
 https://creativecommons.org/licenses/by/4.0/
-
-Note: figures reproduced from Stefan and Schönbrodt (2023) that appear inside
-rendered documents are the original authors' work and are used under their own
-terms (the original article is CC BY 4.0); attribution to the original authors
-is given at each such figure.
