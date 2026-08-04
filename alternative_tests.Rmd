@@ -308,6 +308,6 @@ OPEN QUESTION: would it be interesting to see this for different sample sizes as
 
 ```{r}
 sessionInfo()
-writeLines(capture.output(sessionInfo()), paste0("results/alttests_sessionInfo_", n_iterations, "iterations.rds"))
+writeLines(capture.output(sessionInfo()), paste0("results/alttests_sessionInfo_", n_iterations, "iterations.txt"))
 ```
 

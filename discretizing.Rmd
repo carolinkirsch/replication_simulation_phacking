@@ -407,7 +407,7 @@ sessionInfo()
 ```
 
 ```{r}
-writeLines(capture.output(sessionInfo()), paste0("results/discretizing_sessionInfo_", n_iterations, "iterations.rds"))
+writeLines(capture.output(sessionInfo()), paste0("results/discretizing_sessionInfo_", n_iterations, "iterations.txt"))
 ```
 
 

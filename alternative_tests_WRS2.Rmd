@@ -227,6 +227,6 @@ OPEN: does this also need a flextable table? or could I maybe include it as sum 
 ```{r}
 sessionInfo()
 
-writeLines(capture.output(sessionInfo()), paste0("results/alternative_tests_wrs2_sessionInfo_", n_iterations, "iterations.rds"))
+writeLines(capture.output(sessionInfo()), paste0("results/alternative_tests_wrs2_sessionInfo_", n_iterations, "iterations.txt"))
 ```
 

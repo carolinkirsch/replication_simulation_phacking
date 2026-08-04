@@ -23,31 +23,48 @@ set_flextable_defaults(theme_fun = theme_apa,
                         font.family = "Times New Roman")
 ```
 
-```{r load_results}
-sim_optstop_nmax <- readRDS("results_UBELIX/sim_optstop_nmax_30000iterations.rds")
-sim_optstop_nmin <- readRDS("results_UBELIX/sim_optstop_nmin_30000iterations.rds")
-```
-
-```{r combine_shared_conditions}
-sim_optstop_nmin <- bind_rows(
-  sim_optstop_nmin,
-  # add the four conditions that shared between the sets and only estimated once
-  sim_optstop_nmax |> filter(n_max == 300) 
-)
-```
-
 ```{r general_settings}
-# currently both simulation sets run with same fixed alpha and the same number of iterations, if this gets changed later on, adjust
-n_iterations <- max(sim_optstop_nmax$iteration) 
-alpha <- sim_optstop_nmax$alpha[1] 
+# fixed design constants of the UBELIX run (must match optstop_function_run_sim.R;
+# checked against the raw data below whenever the raw data is loaded)
+n_iterations <- 30000L
+alpha <- 0.05
+```
+
+Note: the raw per-iteration outputs (`results_UBELIX/sim_optstop_*_30000iterations.rds`) are large, git-ignored and NOT distributed. They are only loaded when one of the cached summary files below is missing; regenerate them with `optstop_function_run_sim.R` in that case. With all summary files present (as shipped), this document knits without the raw data.
+
+```{r load_results}
+sim_optstop_nmax_summary_file <- paste0("results_UBELIX/sim_optstop_nmax_summary_",n_iterations,"iterations.rds")
+sim_optstop_nmin_summary_file <- paste0("results_UBELIX/sim_optstop_nmin_summary_",n_iterations,"iterations.rds")
+optstop_peek_counts_nmax_file <- paste0("results_UBELIX/sim_optstop_nmax_peek_counts_summary_",n_iterations,"iterations.rds")
+optstop_peek_counts_nmin_file <- paste0("results_UBELIX/sim_optstop_nmin_peek_counts_summary_",n_iterations,"iterations.rds")
+optstop_peeks_at_stop_nmax_file <- paste0("results_UBELIX/sim_optstop_nmax_peeks_at_stop_summary_",n_iterations,"iterations.rds")
+
+raw_needed <- !all(file.exists(c(sim_optstop_nmax_summary_file,
+                                 sim_optstop_nmin_summary_file,
+                                 optstop_peek_counts_nmax_file,
+                                 optstop_peek_counts_nmin_file,
+                                 optstop_peeks_at_stop_nmax_file)))
+
+if (raw_needed) {
+  sim_optstop_nmax <- readRDS(paste0("results_UBELIX/sim_optstop_nmax_",n_iterations,"iterations.rds"))
+  sim_optstop_nmin <- readRDS(paste0("results_UBELIX/sim_optstop_nmin_",n_iterations,"iterations.rds"))
+
+  # check the constants above against the raw data
+  stopifnot(max(sim_optstop_nmax$iteration) == n_iterations,
+            sim_optstop_nmax$alpha[1] == alpha)
+
+  sim_optstop_nmin <- bind_rows(
+    sim_optstop_nmin,
+    # add the four conditions that shared between the sets and only estimated once
+    sim_optstop_nmax |> filter(n_max == 300)
+  )
+}
 ```
 
 # replication
 ## table nmax
 Note: this chunk only recomputes and saves the summary if `results_UBELIX/sim_optstop_nmax_summary_<n_iterations>iterations.rds` does not already exist; otherwise the existing file is loaded.
 ```{r summary_nmax}
-sim_optstop_nmax_summary_file <- paste0("results_UBELIX/sim_optstop_nmax_summary_",n_iterations,"iterations.rds")
-
 if (!file.exists(sim_optstop_nmax_summary_file)) {
   sim_optstop_nmax_summary <- sim_optstop_nmax |>
     unnest(reported_result) |>
@@ -84,16 +101,13 @@ sim_optstop_nmax_summary |>
   column_spanner_label("step size", -1) |>
   apa_flextable(no_format_columns = `maximum n per condition`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are estimed False Positive Rates ±1 Monte Carlo Standard Error."))
 ```
 <!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Maximum Sample Size and Step Size" -- will be set via #| tbl-cap in the .qmd chunk -->
-
 
 ## table nmin
 Note: this chunk only recomputes and saves the summary if `results_UBELIX/sim_optstop_nmin_summary_<n_iterations>iterations.rds` does not already exist; otherwise the existing file is loaded.
 ```{r summary_nmin}
-sim_optstop_nmin_summary_file <- paste0("results_UBELIX/sim_optstop_nmin_summary_",n_iterations,"iterations.rds")
-
 if (!file.exists(sim_optstop_nmin_summary_file)) {
   sim_optstop_nmin_summary <- sim_optstop_nmin |>
     unnest(reported_result) |>
@@ -197,23 +211,40 @@ sim_optstop_nmax_summary |>
 
 ## hypothetical peeks
 ### count hypothetical peeks
-```{r}
-sim_optstop_nmax |>
-  unnest(reported_result) |> 
-  group_by(k) |> 
-  count(count_peeks_hypothetical, .drop = FALSE) |> 
-  mutate(n = n/n_iterations) |> 
-  rename(count = n)
+Note: these chunks only recompute and save the peek-count summaries from the raw data if the cached file does not already exist; otherwise the existing file is loaded.
+```{r peek_counts_nmax}
+if (!file.exists(optstop_peek_counts_nmax_file)) {
+  optstop_peek_counts_nmax <- sim_optstop_nmax |>
+    unnest(reported_result) |>
+    group_by(k) |>
+    count(count_peeks_hypothetical, .drop = FALSE) |>
+    mutate(n = n/n_iterations) |>
+    rename(count = n)
+
+  saveRDS(optstop_peek_counts_nmax, optstop_peek_counts_nmax_file)
+} else {
+  optstop_peek_counts_nmax <- readRDS(optstop_peek_counts_nmax_file)
+}
+
+optstop_peek_counts_nmax
 ```
 
 
-```{r}
-sim_optstop_nmin |>
-  unnest(reported_result) |> 
-  group_by(k) |> 
-  count(count_peeks_hypothetical, .drop = FALSE) |> 
-  mutate(n = n/n_iterations) |> 
-  rename(count = n)
+```{r peek_counts_nmin}
+if (!file.exists(optstop_peek_counts_nmin_file)) {
+  optstop_peek_counts_nmin <- sim_optstop_nmin |>
+    unnest(reported_result) |>
+    group_by(k) |>
+    count(count_peeks_hypothetical, .drop = FALSE) |>
+    mutate(n = n/n_iterations) |>
+    rename(count = n)
+
+  saveRDS(optstop_peek_counts_nmin, optstop_peek_counts_nmin_file)
+} else {
+  optstop_peek_counts_nmin <- readRDS(optstop_peek_counts_nmin_file)
+}
+
+optstop_peek_counts_nmin
 ```
 
 ### linear x-axis
@@ -292,17 +323,26 @@ ggplot(peeks_cells,
 
 ## actual peeks in FP results
 
-```{r}
-sim_optstop_nmax |>
-  unnest(reported_result) |> 
-  filter(p_value < alpha) |> 
-  group_by(count_peeks_hypothetical) |> 
-  summarize(peeks_median = median(count_peeks_stop))
+Note: this chunk only recomputes and saves the summary from the raw data if the cached file does not already exist; otherwise the existing file is loaded.
+```{r peeks_at_stop_nmax}
+if (!file.exists(optstop_peeks_at_stop_nmax_file)) {
+  optstop_peeks_at_stop_nmax <- sim_optstop_nmax |>
+    unnest(reported_result) |>
+    filter(p_value < alpha) |>
+    group_by(count_peeks_hypothetical) |>
+    summarize(peeks_median = median(count_peeks_stop))
+
+  saveRDS(optstop_peeks_at_stop_nmax, optstop_peeks_at_stop_nmax_file)
+} else {
+  optstop_peeks_at_stop_nmax <- readRDS(optstop_peeks_at_stop_nmax_file)
+}
+
+optstop_peeks_at_stop_nmax
 ```
 
 
 ```{r eval=FALSE, include=FALSE}
-# TO DO if I want to include have to buit n_stop (sample size at stop)
+# TO DO if I want to include have to built n_stop (sample size at stop)
 sim_optstop_nmax |>
   unnest(reported_result) |>
   filter(p_value < alpha) |>   

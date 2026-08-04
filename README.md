@@ -28,30 +28,29 @@ estimated (up to 30,000 iterations per condition), reporting Monte Carlo standar
 ├── functions.R                     # shared simulation helper functions
 │
 │   # --- Optional stopping (HPC) ---
-├── optstop_function_run_sim.R      # runs the simulation
-├── optstop_results.Rmd             # analysis + figures/tables
+├── optstop_function_run_sim.R      # simulation
+├── optstop_results.Rmd             # analysis
 │
 │   # --- Outlier exclusion (HPC) ---
-├── outlier_functions_replication.R # outlier-detection technique functions
-├── outlier_run_sim.R               # runs the simulation
-├── outlier_results.Rmd             # analysis + figures/tables
+├── outlier_functions_replication.R # outlier-detection technique functions (only strategy with separate function file)
+├── outlier_run_sim.R               # simulation
+├── outlier_results.Rmd             # analysis
 │
 │   # --- Discretizing ---
 ├── discretizing.Rmd                # simulation + analysis
 │
 │   # --- Alternative hypothesis tests ---
-├── alternative_tests.Rmd           # Yuen test via DescTools (main analysis)
-├── alternative_tests_WRS2.Rmd      # Yuen test via WRS2 (robustness)
-├── alttests_wrs2_nowelch.Rmd       # WRS2 variant, Welch excluded
+├── alternative_tests.Rmd           # simulation + analysis (main analysis: Yuen test via DescTools)
+├── alternative_tests_WRS2.Rmd      # simulation + analysis (adjuted to original: Yuen test via WRS2)
 │
 │   # --- Incorrect rounding ---
-├── incorrect_rounding.Rmd          # replication simulation + analysis
+├── incorrect_rounding.Rmd          # simulation + analysis (replication)
 ├── reproduction_rounding/          # reproduction via the original authors' phackR package;
 │                                   #   phackR_repro_roundHack.Rmd = reproduction + corrected FPR
 │                                   #   (inlines/links original code — third-party MIT, see NOTICE.md)
 │
 ├── results/                        # session info + small aggregated summaries (local studies); see results/README.md
-├── results_UBELIX/                 # session info, RNG state + summaries for the two HPC studies
+├── results_UBELIX/                 # session info, RNG state + small aggregated summaries for the two HPC studies
 │
 ├── supplementary/                  # Supplementary Material (rendered HTML) + index
 │
@@ -88,6 +87,14 @@ information**, so the raw simulated data does not need to be distributed.
    git-ignored — see *Data availability*).
 5. **Reproduce the analysis:** knit the corresponding `*_results.Rmd` / strategy `.Rmd`.
    The small aggregated summaries needed for most tables/figures are included in `results/`.
+
+> **Viewing vs. re-computing:**
+> - *Viewing:* the rendered documents in [`supplementary/`](supplementary/) show all results — nothing needs to run.
+> - *Knitting:* the shipped summaries in `results/` and `results_UBELIX/` let `optstop_results.Rmd` and
+>   `outlier_results.Rmd` knit without any raw data.
+> - The strategy `.Rmd`s (discretizing, alternative tests, incorrect rounding) first **re-run their simulation**
+>   on a fresh clone: the raw `sim_*.rds` files are not distributed, and the data-generating chunk regenerates
+>   them when missing — identical data via the fixed seeds, it just takes the corresponding runtime.
 
 > The incorrect-rounding **reproduction** (`reproduction_rounding/phackR_repro_roundHack.Rmd`) additionally
 > requires the original authors' **`phackR`** package (from `astefan1/phacking_compendium`, not on CRAN):

@@ -3,17 +3,16 @@
 Rendered, self-contained result documents (open the `.html` files in a browser) for the five
 replicated *p*-hacking strategies, plus the additional analyses referenced in the thesis. Each
 document reports all false-positive-rate (FPR) estimates together with their Monte Carlo standard
-errors (MCSE), the number of tests conducted, and the FPRs of the individual analyses.
+errors (MCSE)and, where applicable, the number of tests conducted and the FPRs of the individual analyses.
 
 | File | Strategy / content | Referenced in the thesis for |
 |------|--------------------|------------------------------|
-| `optstop_results.html` | Optional stopping — full results | FPR estimates + MCSE; tests conducted; individual-analysis FPRs |
+| `optstop_results.html` | Optional stopping — full results | FPR estimates + MCSE; number of hypothetical peeks |
 | `outlier_results.html` | Outlier exclusion — full results | FPR estimates + MCSE; mechanism (α-accumulation vs. inflated individual FPRs) |
-| `discretizing.html` | Discretizing variables — full results | **FPR by mechanism and sample size** (main text points here); estimates + MCSE |
+| `discretizing.html` | Discretizing variables — full results | FPR estimates + MCSE; **FPR by mechanism and sample size** (main text points here) |
 | `alternative_tests.html` | Alternative hypothesis tests (Yuen via `DescTools`) — main analysis | FPR estimates + MCSE |
 | `alternative_tests_WRS2.html` | Alternative hypothesis tests recomputed with `WRS2` - adapted to original implementation | FPR estimates + MCSE |
-| `yuen_trim_typeI_error.html` | Simulation comparing `WRS2` vs. `DescTools` Winsorized-variance handling | **The "simulation illustrating the consequences of these differences"** cited in the alternative-tests discussion |
-| `incorrect_rounding.html` | Incorrect rounding — full results | Estimates + MCSE; comparison to analytic values and to the reproduction |
+| `incorrect_rounding.html` | Incorrect rounding — full results | Estimates + MCSE |
 
 **Notes**
 

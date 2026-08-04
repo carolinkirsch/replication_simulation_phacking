@@ -93,5 +93,5 @@ sim_out_single |>
   select(-generated_data) |>
   saveRDS(paste0("results/sim_out_single_", n_iterations, "iterations.rds"))
 
-writeLines(capture.output(sessionInfo()), paste0("results/out_sessionInfo_", n_iterations, "iterations.rds"))
+writeLines(capture.output(sessionInfo()), paste0("results/out_sessionInfo_", n_iterations, "iterations.txt"))
 
