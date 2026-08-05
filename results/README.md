@@ -16,7 +16,7 @@ summaries, session information, and RNG state are shipped.
 ## What is where
 
 - **`results/`** — summaries + session info for the studies run locally: discretizing, alternative
-  hypothesis tests (incl. the `WRS2` and no-Welch variants), and incorrect rounding.
+  hypothesis tests (incl. the `WRS2` variant), and incorrect rounding.
 - **`results_UBELIX/`** — session info, RNG state, and summaries for the two studies run on **UBELIX**,
   the University of Bern HPC cluster: optional stopping and outlier exclusion.
 
@@ -25,9 +25,7 @@ To regenerate a study's raw objects, run its `*_run_sim.R` script (or the simula
 
 ## Naming note
 
-Some summary files do not yet follow a single uniform scheme — for example the word order in
-`sim_optstop_nmax_summary_*` / `sim_out_seq_summary_*` (summary at the end rather than
-`sim_summary_optstop_nmax_*`), the derived tables `technique_lasttest_summary_*` and
-`out_seq_technique_per_strategy_*`, and a typo in `altttests_test_per_strategy_*` (three t's).
-The current names are kept because the analysis code references them as-is. They may be standardized
-to a consistent `sim_summary_*` convention in a future update for easier navigation.
+Two naming conventions coexist deliberately: files in `results/` put the summary label first
+(`sim_summary_<study>_*`), while the summaries in `results_UBELIX/` place it last
+(`sim_<study>_<set>_<content>_summary_*`). Both are kept in sync with the analysis code and the
+thesis, which read these files by name.

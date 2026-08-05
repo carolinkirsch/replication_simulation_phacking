@@ -1,20 +1,17 @@
 ---
-title: "incorrect rounding"
+title: "Incorrect Rounding"
 author: "Carolin Kirsch"
-date: "2025-12-27"
 output:
-  html_document: default
-  word_document: default
-  pdf_document:
-    latex_engine: xelatex
+  html_document:
+    code_folding: hide
 ---
 
-```{r setup}
+```{r setup, message = FALSE, warning = FALSE, class.source = "fold-show"}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(dplyr)
 library(tidyverse)
 library(tidyr)
 library(ggplot2)
-library(ggtext)
 library(flextable)
 library(apa7)
 library(ftExtra)
@@ -23,21 +20,18 @@ set_flextable_defaults(theme_fun = theme_apa,
                         font.family = "Times New Roman")
 ```
 
-```{r source}
+```{r source, class.source = "fold-show"}
 source("functions.R")
 ```
 
-```{r general_settings}
+```{r general_settings, class.source = "fold-show"}
 n_iterations <-  30000L # 30'000 since no reporting strategy that is varied
-alpha <- 0.05 #for exploring alterantive sig. levels the thresholds for rounding down (p_max) would need to be adapted as well
+alpha <- 0.05 #for exploring alternative sig. levels the thresholds for rounding down (p_max) would need to be adapted as well
 ```
-
-# description
-Round p-value down to the significance level. The maximum value $p_{max}$ that is rounded down to $\alpha = 0.05$ is varied with $p_{max} \in \{0.051, 0.6\}$.
 
 # functions
 ## incorrect rounding
-```{r incorrect_rounding}
+```{r incorrect_rounding, class.source = "fold-show"}
 incorrect_rounding <- function(p, p_max){
   ifelse(alpha < p & p <= p_max, 
          p_hacked <- alpha,
@@ -48,7 +42,7 @@ incorrect_rounding <- function(p, p_max){
 ```
 
 # simulation
-```{r sim_par_rounding}
+```{r sim_par_rounding, class.source = "fold-show"}
 par_grid_rounding <- expand_grid(
   n = c(30, 50, 100, 300),
   iteration = 1:n_iterations,
@@ -56,7 +50,7 @@ par_grid_rounding <- expand_grid(
   reporting_strategy = c("not applicable"))
 ```
 
-```{r sim_rounding}
+```{r sim_rounding, class.source = "fold-show"}
 rounding_cache_file <- paste0("results/sim_rounding_", n_iterations, "iterations.rds")
 
 if (file.exists(rounding_cache_file)) {
@@ -102,27 +96,25 @@ if(!file.exists(sim_summary_rounding_file)){
 sim_summary_rounding
 ```
 
-TO DO: row names, note, caption, etc.
 ```{r rounding_flextable_table}
 sim_summary_rounding |>
-  mutate(`n per condition` = as.character(n),
+  mutate(`n` = as.character(n),
          p_max = as.character(p_max)) |>
   mutate(across(where(is.numeric), \(x) scales::number(x, accuracy = 0.001))) |>
   mutate(edr_string = paste0(empirical_detection_rate,
                              " (", 
                              empirical_detection_rate_mcse,
                              ")")) |>
-  select(`n per condition`,
+  select(`n`,
          p_max,
          edr_string) |>
   pivot_wider(names_from = p_max,
               values_from = edr_string) |>
-  column_spanner_label("Upper bound for rounding down", -1) |>
-  apa_flextable(no_format_columns = `n per condition`) |>
+  column_spanner_label("Rounding threshold", -1) |>
+  apa_flextable(no_format_columns = `n`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Empirical False Positive Rate (±1 Monte Carlo Standard Error). n = sample size per group."))
 ```
-<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Sample Size and Upper Rounding Bound" -- will be set via #| tbl-cap in the .qmd chunk -->
 
 
 ## plot
@@ -146,6 +138,8 @@ ggplot(sim_summary_rounding,
   theme_classic()
 ```
 
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .001.The grey line indicates the nominal $\alpha$-level of .05. $n$ = sample size per group.
+
 ```{r plot_samplesize_x}
 ggplot(sim_summary_rounding,
        aes(x = n,
@@ -167,6 +161,8 @@ ggplot(sim_summary_rounding,
   scale_x_continuous(breaks = c(30, 50, 100, 300)) +
   theme_classic()
 ```
+
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .001.
 
 ```{r}
 sessionInfo()

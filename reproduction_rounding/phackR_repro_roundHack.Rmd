@@ -1,7 +1,6 @@
 ---
-title: "phackR rounding"
+title: "Incorrect Rounding — Reproduction with the Original phackR Code"
 author: "Carolin Kirsch"
-date: "2026-07-20"
 output: html_document
 ---
 

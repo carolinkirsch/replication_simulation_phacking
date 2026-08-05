@@ -41,7 +41,7 @@ estimated (up to 30,000 iterations per condition), reporting Monte Carlo standar
 │
 │   # --- Alternative hypothesis tests ---
 ├── alternative_tests.Rmd           # simulation + analysis (main analysis: Yuen test via DescTools)
-├── alternative_tests_WRS2.Rmd      # simulation + analysis (adjuted to original: Yuen test via WRS2)
+├── alternative_tests_WRS2.Rmd      # simulation + analysis (adjusted to original: Yuen test via WRS2)
 │
 │   # --- Incorrect rounding ---
 ├── incorrect_rounding.Rmd          # simulation + analysis (replication)
@@ -70,7 +70,7 @@ information**, so the raw simulated data does not need to be distributed.
   `alternative_tests*.Rmd`, `incorrect_rounding.Rmd`).
 - **Parallelisation.** The two HPC studies draw independent, statistically sound RNG streams
   via `furrr_options(seed = TRUE)` (L'Ecuyer-CMRG). The state of the RNG between sub-simulations
-  is stored in `results*/…_rng_state_before_*.rds` to allow partial reproduction.
+  is stored in `results_UBELIX/…_rng_state_before_*.rds` to allow partial reproduction.
 - **Session information.** Full `sessionInfo()` for each study — package versions and auxiliary
   dependencies (BLAS/LAPACK) — is in `results/…_sessionInfo*` and `results_UBELIX/…_sessionInfo*`.
 
@@ -81,7 +81,12 @@ information**, so the raw simulated data does not need to be distributed.
 2. Open `phacking-replication.Rproj` so that all relative paths resolve.
 3. Install the required packages (see exact versions in the `*sessionInfo*` files):
    `tidyverse` (2.0.0), `furrr` (0.3.1), `DescTools` (0.99.60), `WRS2` (1.1-7),
-   `ggtext`, `kableExtra`, `flextable`, plus their dependencies.
+   `flextable`, `apa7`, `ftExtra`, plus their dependencies.
+   The outlier study additionally calls `aplpack`, `mvoutlier`, and `R.devices` via `::`.
+   Since they were never attached, they are absent from the recorded session information;
+   their versions were retrieved retrospectively from the unchanged UBELIX environment
+   used for the simulation (R 4.5.1): `aplpack` 1.3.5, `mvoutlier` 2.1.4 (with its
+   dependency `sgeostat` 1.0-27), `R.devices` 2.17.4.
 4. **Run a simulation:** source the corresponding `*_run_sim.R` (or run the sim chunk of the
    `.Rmd`). This regenerates the raw `sim_*.rds` locally (these are large and intentionally
    git-ignored — see *Data availability*).
@@ -108,7 +113,7 @@ information**, so the raw simulated data does not need to be distributed.
 
 The [`supplementary/`](supplementary/) folder holds the rendered result documents and the
 additional analyses referenced in the thesis (FPR by mechanism and sample size, all estimates
-with MCSE, exploratory analyses, and the WRS2-vs-DescTools comparison for the Yuen test).
+with MCSE, and exploratory analyses).
 See [`supplementary/README.md`](supplementary/README.md) for an index mapping each document to
 the thesis sections it supports.
 

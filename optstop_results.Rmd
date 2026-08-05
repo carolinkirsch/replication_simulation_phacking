@@ -1,20 +1,18 @@
 ---
-title: "optional stopping results"
+title: "Optional Stopping"
 author: "Carolin Kirsch"
-date: "2026-07-04"
 output:
-  html_document: default
+  html_document:
+    code_folding: hide
   word_document: default
   pdf_document:
     latex_engine: xelatex
 ---
 
-TO DO: sync with MA_quarto.qmd
-TO DO: clean up
+```{r setup, message = FALSE, warning = FALSE, class.source = "fold-show"}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 
-```{r setup}
 library(tidyverse)
-library(ggtext)
 library(flextable)
 library(apa7)
 library(ftExtra)
@@ -23,7 +21,7 @@ set_flextable_defaults(theme_fun = theme_apa,
                         font.family = "Times New Roman")
 ```
 
-```{r general_settings}
+```{r general_settings, class.source = "fold-show"}
 # fixed design constants of the UBELIX run (must match optstop_function_run_sim.R;
 # checked against the raw data below whenever the raw data is loaded)
 n_iterations <- 30000L
@@ -32,7 +30,7 @@ alpha <- 0.05
 
 Note: the raw per-iteration outputs (`results_UBELIX/sim_optstop_*_30000iterations.rds`) are large, git-ignored and NOT distributed. They are only loaded when one of the cached summary files below is missing; regenerate them with `optstop_function_run_sim.R` in that case. With all summary files present (as shipped), this document knits without the raw data.
 
-```{r load_results}
+```{r load_results, class.source = "fold-show"}
 sim_optstop_nmax_summary_file <- paste0("results_UBELIX/sim_optstop_nmax_summary_",n_iterations,"iterations.rds")
 sim_optstop_nmin_summary_file <- paste0("results_UBELIX/sim_optstop_nmin_summary_",n_iterations,"iterations.rds")
 optstop_peek_counts_nmax_file <- paste0("results_UBELIX/sim_optstop_nmax_peek_counts_summary_",n_iterations,"iterations.rds")
@@ -83,7 +81,6 @@ if (!file.exists(sim_optstop_nmax_summary_file)) {
 sim_optstop_nmax_summary
 ```
 
-TO DO: row names, note, caption, etc.
 ```{r nmax_flextable_table}
 sim_optstop_nmax_summary |>
   mutate(`maximum n per condition` = as.character(n_max),
@@ -101,7 +98,7 @@ sim_optstop_nmax_summary |>
   column_spanner_label("step size", -1) |>
   apa_flextable(no_format_columns = `maximum n per condition`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are estimed False Positive Rates ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Empirical False Positive Rate (±1 Monte Carlo Standard Error)."))
 ```
 <!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Maximum Sample Size and Step Size" -- will be set via #| tbl-cap in the .qmd chunk -->
 
@@ -143,7 +140,7 @@ sim_optstop_nmin_summary |>
   column_spanner_label("step size", -1) |>
   apa_flextable(no_format_columns = `initial n per condition`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Empirical False Positive Rate (±1 Monte Carlo Standard Error)."))
 ```
 <!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Initial Sample Size and Step Size" -- will be set via #| tbl-cap in the .qmd chunk -->
 
@@ -171,6 +168,8 @@ ggplot(sim_optstop_nmax_summary,
   theme_classic()
 ```
 
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
+
 ## plot nmin
 ```{r nmin_plot_repli}
 ggplot(sim_optstop_nmin_summary,
@@ -194,6 +193,8 @@ ggplot(sim_optstop_nmin_summary,
     color = "initial n per group") +
   theme_classic()
 ```
+
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
 
 # extension
 ## span of FPR
@@ -264,6 +265,8 @@ ggplot(sim_optstop_nmax_summary,
   theme_classic()
 ```
 
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
+
 ```{r}
 ggplot(sim_optstop_nmax_summary,
        aes(x = count_peeks_hypothetical, y = empirical_detection_rate)) +
@@ -279,6 +282,8 @@ ggplot(sim_optstop_nmax_summary,
     theme_classic()
 ```
 
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
+
 
 ```{r}
 ggplot(sim_optstop_nmin_summary,
@@ -292,9 +297,11 @@ ggplot(sim_optstop_nmin_summary,
   labs(x = "hypothetical number of peeks",
        y = "empirical false positive rate",
        colour = "step size",
-       shape = "inital n") +
+       shape = "initial n") +
   theme_classic()
 ```
+
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
 
 ### facet plot
 ```{r}
@@ -302,7 +309,7 @@ peeks_cells <- bind_rows(
   sim_optstop_nmax_summary |>
     mutate(dataset = "upper bound varied"), 
   sim_optstop_nmin_summary |>
-    mutate(dataset = "inital sample size varied") 
+    mutate(dataset = "initial sample size varied") 
 ) 
 
 ggplot(peeks_cells,
@@ -320,6 +327,8 @@ ggplot(peeks_cells,
        colour = "step size") +
   theme_classic()
 ```
+
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .003.
 
 ## actual peeks in FP results
 

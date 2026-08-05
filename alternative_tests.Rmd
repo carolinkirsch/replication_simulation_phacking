@@ -1,20 +1,21 @@
 ---
-title: "alternative hypothesis tests"
+title: "Alternative Hypothesis Tests (Yuen via DescTools)"
 author: "Carolin Kirsch"
-date: "2025-12-27"
 output:
-  html_document: default
+  html_document:
+    code_folding: hide
   word_document: default
   pdf_document:
     latex_engine: xelatex
 ---
 
-```{r setup}
+```{r setup, message = FALSE, warning = FALSE, class.source = "fold-show"}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
 library(dplyr)
 library(tidyverse)
 library(tidyr)
 library(ggplot2)
-library(ggtext)
 library(flextable)
 library(apa7)
 library(ftExtra)
@@ -24,20 +25,18 @@ set_flextable_defaults(theme_fun = theme_apa,
                         font.family = "Times New Roman")
 ```
 
-```{r source}
+```{r source, class.source = "fold-show"}
 source("functions.R")
 ```
 
-```{r general_seettings}
+```{r general_seettings, class.source = "fold-show"}
 n_iterations <- 10000L
 alpha <- 0.05
 ```
 
-Use alternative hypothesis tests to achieve statistical significance.Conducting an independent-samples t-test, a Welch test, a Wilcoxon test and a Yuen test with four different trimming parameters,c ∈ {0.1, 0.15, 0.2, 0.25}, on the same dataset.
-
 # functions
 ## data analysis alternative tests
-```{r alternative_tests}
+```{r alternative_tests, class.source = "fold-show"}
 analyse_data_alternative_tests <- function(data) {
   tibble(
     test = c("students", "welch", "wilcox", 
@@ -56,7 +55,7 @@ analyse_data_alternative_tests <- function(data) {
 ```
 
 # simulation
-```{r sim_par_alternative_tests}
+```{r sim_par_alternative_tests, class.source = "fold-show"}
 par_grad_alternative_tests <- expand_grid(
   n = c(30, 50, 100, 300),
   iteration = 1:n_iterations,
@@ -64,7 +63,7 @@ par_grad_alternative_tests <- expand_grid(
 )
 ```
 
-```{r sim_alt_tests}
+```{r sim_alt_tests, class.source = "fold-show"}
 sim_alternative_tests_file <- paste0("results/sim_alternative_tests_",n_iterations,"iterations.rds")
 
 if(!file.exists(sim_alternative_tests_file)){
@@ -120,7 +119,6 @@ if(!file.exists(sim_summary_alternative_tests_file)){
 sim_summary_alternative_tests
 ```
 
-TO DO: row names, note, caption, etc.
 ```{r flextable_repli_alt_tests}
 sim_summary_alternative_tests |>
   mutate(`n per condition` = as.character(n)) |>
@@ -133,10 +131,8 @@ sim_summary_alternative_tests |>
          `empirical FPR (±1 MCSE)` = edr_string) |>
   apa_flextable(no_format_columns = `n per condition`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Empirical False Positive Rate (±1 Monte Carlo Standard Error)."))
 ```
-<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Sample Size" -- will be set via #| tbl-cap in the .qmd chunk -->
-
 
 ## replication plot
 ```{r plot_repli_alt_tests}
@@ -159,8 +155,9 @@ plot_repli_alternative_tests <- ggplot(sim_summary_alternative_tests,
   theme_classic()
 
 plot_repli_alternative_tests
-saveRDS(plot_repli_alternative_tests, "results/plot_repli_alternative_tests_10000iterations.rds")
 ```
+
+*Note.* Lineranges show ±1 Monte Carlo standard error (MCSE) of the empirical false-positive rate and are largely smaller than the plotted points; maximum MCSE across all conditions = .002.
 
 ## extension 1: FPR per test
 ```{r summary_FPR_test_n_alt_tests}
@@ -184,7 +181,6 @@ if(!file.exists(sim_summary_test_n_alternative_tests_file)){
 sim_summary_test_n_alternative_tests
 ```
 
-TO DO: row names, note, caption, etc.
 ```{r FPR_test_n_flextable_alt_tests}
 sim_summary_test_n_alternative_tests |>
   mutate(`n per condition` = as.character(n),
@@ -202,10 +198,8 @@ sim_summary_test_n_alternative_tests |>
   column_spanner_label("Hypothesis test", -1) |>
   apa_flextable(no_format_columns = `n per condition`) |>
   align(j = 1, align = "center") |>
-  add_footer_lines(values = as_paragraph(as_i("Note. "), "Values in parentheses are ±1 Monte Carlo Standard Error."))
+  add_footer_lines(values = as_paragraph(as_i("Note. "), "Empirical False Positive Rate (±1 Monte Carlo Standard Error)."))
 ```
-<!-- caption for quarto integration: "Empirical False Positive Rate (±1 MCSE) by Hypothesis Test and Sample Size" -- will be set via #| tbl-cap in the .qmd chunk -->
-
 
 ```{r FPR_test_alt_tests}
 sim_summary_test_alternative_tests <- sim_alternative_tests |> 
@@ -223,7 +217,6 @@ sim_summary_test_alternative_tests <- sim_alternative_tests |>
 
 sim_summary_test_alternative_tests
 ```
-OPEN: does this also need a flextable table? or could I maybe include it as sum row in the upper table?
 
 ## extension 2: count tests within reported FP results
 
@@ -241,6 +234,7 @@ reported_test_percentage <- sim_alternative_tests |>
 reported_test_percentage
 ```
 
+Investigation of why the Welch test is never reported:
 ```{r investigation_zero_welch}
 sim_alternative_tests |> 
   unnest(analysis_result) |> 
@@ -248,13 +242,15 @@ sim_alternative_tests |>
   pivot_wider(names_from = test, values_from = p_value) |> 
   mutate(p_diff_students_welch = students - welch) |> 
   summarize(min_p_diff_students_welch = min(p_diff_students_welch),
-            max_p_diff_students_wekch = max(p_diff_students_welch))
+            max_p_diff_students_welch = max(p_diff_students_welch))
 ```
 
-```{r test_count_FPR}
-altttests_test_per_strategy_file <- paste0("results/altttests_test_per_strategy_",n_iterations,"iterations.rds")
+The $p$-value of the Student test was strictly smaller than the $p$-value of the Welch test in every iteration. This explains why the Welch test never got reported over any of the other tests. 
 
-if(!file.exists(altttests_test_per_strategy_file)){
+```{r test_count_FPR}
+alttests_test_per_strategy_file <- paste0("results/sim_summary_alttests_test_per_strategy_",n_iterations,"iterations.rds")
+
+if(!file.exists(alttests_test_per_strategy_file)){
   reported_test_percentage_by_strategy <- sim_alternative_tests |>
     unnest(reported_result) |>
     mutate(test = factor(test, levels = all_tests)) |>
@@ -264,9 +260,9 @@ if(!file.exists(altttests_test_per_strategy_file)){
     mutate(percentage_within_reporting_strategy = n / sum(n)) |>
     ungroup()
 
-  saveRDS(reported_test_percentage_by_strategy, altttests_test_per_strategy_file)
+  saveRDS(reported_test_percentage_by_strategy, alttests_test_per_strategy_file)
 } else {
-  reported_test_percentage_by_strategy <- readRDS(altttests_test_per_strategy_file)
+  reported_test_percentage_by_strategy <- readRDS(alttests_test_per_strategy_file)
 }
 
 reported_test_percentage_by_strategy
@@ -287,8 +283,6 @@ reported_test_percentage_by_strategy |>
   align(j = 1, align = "left") |>
   add_footer_lines(values = as_paragraph(as_i("Note.")))
 ```
-<!-- caption for quarto integration: "Percentages of Type of Hypothesis Test within Reported False-Positive Analysis Results" -- will be set via #| tbl-cap in the .qmd chunk -->
-
 
 ```{r}
 ggplot(reported_test_percentage_by_strategy, 
@@ -304,7 +298,6 @@ ggplot(reported_test_percentage_by_strategy,
   ) +
   theme_minimal()
 ```
-OPEN QUESTION: would it be interesting to see this for different sample sizes as well? resp. check if there is a difference
 
 ```{r}
 sessionInfo()

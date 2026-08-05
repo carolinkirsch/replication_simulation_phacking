@@ -1,9 +1,11 @@
 library(tidyverse)
 library(furrr)
-#check if aplpack etc. are installed on UBELIX
+# check if aplpack, R.devices and mvoutlier are installed on UBELIX
 
 source("functions.R")
 source("outlier_functions_replication.R")
+
+dir.create("results_UBELIX", showWarnings = FALSE)
 
 plan(multisession, workers = future::availableCores())
 
@@ -51,12 +53,12 @@ sim_out_seq <- par_grid_out_seq |>
 
 sim_out_seq |>
   select(-generated_data) |>
-  saveRDS(paste0("results/sim_out_seq_", n_iterations, "iterations.rds"))
+  saveRDS(paste0("results_UBELIX/sim_out_seq_", n_iterations, "iterations.rds"))
 
-saveRDS(.Random.seed, paste0("results/out_rng_state_before_single_", n_iterations,"iterations.rds"))
+saveRDS(.Random.seed, paste0("results_UBELIX/out_rng_state_before_single_", n_iterations,"iterations.rds"))
 
 # for partial reproduction
-#.Random.seed <- readRDS(paste0("results/out_rng_state_before_single_", n_iterations,"iterations.rds"))
+#.Random.seed <- readRDS(paste0("results_UBELIX/out_rng_state_before_single_", n_iterations,"iterations.rds"))
 
 ## single
 par_grid_out_single <- expand_grid(
@@ -91,7 +93,7 @@ sim_out_single <- par_grid_out_single |>
 
 sim_out_single |>
   select(-generated_data) |>
-  saveRDS(paste0("results/sim_out_single_", n_iterations, "iterations.rds"))
+  saveRDS(paste0("results_UBELIX/sim_out_single_", n_iterations, "iterations.rds"))
 
-writeLines(capture.output(sessionInfo()), paste0("results/out_sessionInfo_", n_iterations, "iterations.txt"))
+writeLines(capture.output(sessionInfo()), paste0("results_UBELIX/out_sessionInfo_", n_iterations, "iterations.txt"))
 

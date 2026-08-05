@@ -5,6 +5,8 @@ plan(multisession, workers = future::availableCores())
 
 source("functions.R")
 
+dir.create("results_UBELIX", showWarnings = FALSE)
+
 n_iterations <- 30000L # since reporting strategy isn't varied
 sign_level <- 0.05 
 
@@ -73,14 +75,14 @@ sim_optstop_nmax <- par_grid_optstop_nmax |>
 
 sim_optstop_nmax |> 
   select(-generated_data) |> 
-  saveRDS(paste0("results/sim_optstop_nmax_",n_iterations,"iterations.rds"))
+  saveRDS(paste0("results_UBELIX/sim_optstop_nmax_",n_iterations,"iterations.rds"))
 
 ## simulation n_min varied
 
-saveRDS(.Random.seed, "results/optstop_rng_state_before_nmin.rds")
+saveRDS(.Random.seed, paste0("results_UBELIX/optstop_rng_state_before_nmin_", n_iterations, "iterations.rds"))
 
 # for partial reproduction
-# .Random.seed <- readRDS("results/rng_state_before_nmin.rds")
+# .Random.seed <- readRDS(paste0("results_UBELIX/optstop_rng_state_before_nmin_", n_iterations, "iterations.rds"))
 
 par_grid_optstop_nmin <- expand_grid(
   iteration = 1:n_iterations,
@@ -107,6 +109,6 @@ sim_optstop_nmin <- par_grid_optstop_nmin |>
 
 sim_optstop_nmin |> 
   select(-generated_data) |>
-  saveRDS(paste0("results/sim_optstop_nmin_",n_iterations,"iterations.rds"))
+  saveRDS(paste0("results_UBELIX/sim_optstop_nmin_",n_iterations,"iterations.rds"))
 
-writeLines(capture.output(sessionInfo()), "results/optstop_sessionInfo.txt")
+writeLines(capture.output(sessionInfo()), paste0("results_UBELIX/optstop_sessionInfo_", n_iterations, "iterations.txt"))

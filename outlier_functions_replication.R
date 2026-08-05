@@ -50,22 +50,6 @@ get_p_single_var_outlier_removed <- function(data, is_out_x, is_out_y) {
 ### boxplot
 remove_out_boxplot <- function(data) {
   
-  # for my first version of boxplot outlier removal summer that I coded in 2024 
-  # I had to add a guard by rounding the data bc the filtering wouldn't work otherwise
-  # now this doesn't seem necessary anymore (filtering works also with unrounded values)
-  # I kept the guard anyway to avoid potential problems that I don't have time to check rn
-  # in the future should be changed to index-based filtering to make the process more robust
-  # data_rounded <- data |> round(6)
-  
-  # defining outliers
-  # out_x <- graphics::boxplot(data_rounded$x, plot = FALSE)$out
-  # out_y <- graphics::boxplot(data_rounded$y, plot = FALSE)$out
-  # 
-  # get_p_single_var_outlier_removed(
-  #   data_rounded,
-  #   is_out_x = data_rounded$x %in% out_x,
-  #   is_out_y = data_rounded$y %in% out_y
-  
   # defining outliers
   out_x <- graphics::boxplot(data$x, plot = FALSE)$out
   out_y <- graphics::boxplot(data$y, plot = FALSE)$out
@@ -166,7 +150,6 @@ remove_out_percentage <- function(data) {
   
   # extracing outliers
   ## sort x and y to easily identify extremes
-  ## base R sort(): operates on plain vectors, arrange() only on data frames
   x_sorted <- sort(data$x)
   y_sorted <- sort(data$y)
   

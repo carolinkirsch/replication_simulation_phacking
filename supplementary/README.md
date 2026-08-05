@@ -3,7 +3,7 @@
 Rendered, self-contained result documents (open the `.html` files in a browser) for the five
 replicated *p*-hacking strategies, plus the additional analyses referenced in the thesis. Each
 document reports all false-positive-rate (FPR) estimates together with their Monte Carlo standard
-errors (MCSE)and, where applicable, the number of tests conducted and the FPRs of the individual analyses.
+errors (MCSE) and, where applicable, the number of tests conducted and the FPRs of the individual analyses.
 
 | File | Strategy / content | Referenced in the thesis for |
 |------|--------------------|------------------------------|

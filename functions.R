@@ -1,3 +1,8 @@
+# Shared helper functions for all five p-hacking simulation studies
+# (data generation, p-value extraction, reporting strategies).
+# Sourced by the *_run_sim.R scripts and the strategy .Rmds
+# Requires tidyverse, which is loaded by every calling script before sourcing this file.
+
 # data generating functions
 ## for t-test
 
@@ -33,7 +38,6 @@ generate_data_univar_linreg <- function(n,
 }
 
 # analyse data & get p-value
-
 ## t-test
 get_p_ttest <- function(data){
   p <- t.test(score ~ condition, data, alternative = "two.sided", var.equal = TRUE)$p.value
@@ -50,9 +54,6 @@ get_p_univar_linreg <- function(data){
   
   return(p)
 }
-
-#return(tibble(data = list(data), p = p))
-
 
 # reporting strategy
 # function to report a p-value based on the chosen strategy
@@ -84,8 +85,6 @@ reporting_strategy_tibbles <- function(results_tibble, strategy, alpha = 0.05) {
       reported_tibble <- results_tibble |> slice(1)
     }
   }
-  
-  #if (nrow(reported_tibble) > 1) 
   
   return(reported_tibble)
 }
