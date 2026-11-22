@@ -12,6 +12,7 @@ errors (MCSE) and, where applicable, the number of tests conducted and the FPRs 
 | `discretizing.html` | Discretizing variables — full results | FPR estimates + MCSE; **FPR by mechanism and sample size** (main text points here) |
 | `alternative_tests.html` | Alternative hypothesis tests (Yuen via `DescTools`) — main analysis | FPR estimates + MCSE |
 | `alternative_tests_WRS2.html` | Alternative hypothesis tests recomputed with `WRS2` - adapted to original implementation | FPR estimates + MCSE |
+| `yuen_trim_typeI_error.html` | Type I error of Yuen's t-test, `DescTools` vs. `WRS2`, by trim parameter, sample size, and winsorization case | **The "simulation illustrating the consequences of these differences"** (alternative-tests discussion points here) |
 | `incorrect_rounding.html` | Incorrect rounding — full results | Estimates + MCSE |
 
 **Notes**
