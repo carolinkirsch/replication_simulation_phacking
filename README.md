@@ -42,6 +42,7 @@ estimated (up to 30,000 iterations per condition), reporting Monte Carlo standar
 │   # --- Alternative hypothesis tests ---
 ├── alternative_tests.Rmd           # simulation + analysis (main analysis: Yuen test via DescTools)
 ├── alternative_tests_WRS2.Rmd      # simulation + analysis (adjusted to original: Yuen test via WRS2)
+├── yuen_trim_typeI_error.Rmd       # simulation (HPC) + analysis: Type I error of Yuen's test, DescTools vs. WRS2
 │
 │   # --- Incorrect rounding ---
 ├── incorrect_rounding.Rmd          # simulation + analysis (replication)
@@ -50,7 +51,7 @@ estimated (up to 30,000 iterations per condition), reporting Monte Carlo standar
 │                                   #   (inlines/links original code — third-party MIT, see NOTICE.md)
 │
 ├── results/                        # session info + small aggregated summaries (local studies); see results/README.md
-├── results_UBELIX/                 # session info, RNG state + small aggregated summaries for the two HPC studies
+├── results_UBELIX/                 # session info, RNG state + small aggregated summaries for the HPC-run simulations
 │
 ├── supplementary/                  # Supplementary Material (rendered HTML) + index
 │
@@ -67,8 +68,8 @@ information**, so the raw simulated data does not need to be distributed.
 
 - **Random seeds.** A single seed is set at the start of each simulation study
   (`optstop_function_run_sim.R`, `outlier_run_sim.R`, `discretizing.Rmd`,
-  `alternative_tests*.Rmd`, `incorrect_rounding.Rmd`).
-- **Parallelisation.** The two HPC studies draw independent, statistically sound RNG streams
+  `alternative_tests*.Rmd`, `incorrect_rounding.Rmd`, `yuen_trim_typeI_error.Rmd`).
+- **Parallelisation.** The HPC-run simulations draw independent, statistically sound RNG streams
   via `furrr_options(seed = TRUE)` (L'Ecuyer-CMRG). The state of the RNG between sub-simulations
   is stored in `results_UBELIX/…_rng_state_before_*.rds` to allow partial reproduction.
 - **Session information.** Full `sessionInfo()` for each study — package versions and auxiliary
@@ -77,9 +78,9 @@ information**, so the raw simulated data does not need to be distributed.
 ### How to reproduce
 
 1. Install **R** (R 4.4.1 was used for discretizing, alternative tests, and incorrect rounding;
-   R 4.5.1 for the HPC-run optional stopping and outlier exclusion) and RStudio.
-2. Open `phacking-replication.Rproj` so that all relative paths resolve.
-3. Install the required packages (see exact versions in the `*sessionInfo*` files):
+   R 4.5.1 for the HPC-run optional stopping, outlier exclusion, and Yuen comparison) and RStudio.
+3. Open `phacking-replication.Rproj` so that all relative paths resolve.
+4. Install the required packages (see exact versions in the `*sessionInfo*` files):
    `tidyverse` (2.0.0), `furrr` (0.3.1), `DescTools` (0.99.60), `WRS2` (1.1-7),
    `flextable`, `apa7`, `ftExtra`, plus their dependencies.
    The outlier study additionally calls `aplpack`, `mvoutlier`, and `R.devices` via `::`.
@@ -87,17 +88,17 @@ information**, so the raw simulated data does not need to be distributed.
    their versions were retrieved retrospectively from the unchanged UBELIX environment
    used for the simulation (R 4.5.1): `aplpack` 1.3.5, `mvoutlier` 2.1.4 (with its
    dependency `sgeostat` 1.0-27), `R.devices` 2.17.4.
-4. **Run a simulation:** source the corresponding `*_run_sim.R` (or run the sim chunk of the
+5. **Run a simulation:** source the corresponding `*_run_sim.R` (or run the sim chunk of the
    `.Rmd`). This regenerates the raw `sim_*.rds` locally (these are large and intentionally
    git-ignored — see *Data availability*).
-5. **Reproduce the analysis:** knit the corresponding `*_results.Rmd` / strategy `.Rmd`.
+6. **Reproduce the analysis:** knit the corresponding `*_results.Rmd` / strategy `.Rmd`.
    The small aggregated summaries needed for most tables/figures are included in `results/`.
 
 > **Viewing vs. re-computing:**
 > - *Viewing:* the rendered documents in [`supplementary/`](supplementary/) show all results — nothing needs to run.
 > - *Knitting:* the shipped summaries in `results/` and `results_UBELIX/` let `optstop_results.Rmd` and
 >   `outlier_results.Rmd` knit without any raw data.
-> - The strategy `.Rmd`s (discretizing, alternative tests, incorrect rounding) first **re-run their simulation**
+> - The strategy `.Rmd`s (discretizing, alternative tests, incorrect rounding) and `yuen_trim_typeI_error.Rmd` first **re-run their simulation**
 >   on a fresh clone: the raw `sim_*.rds` files are not distributed, and the data-generating chunk regenerates
 >   them when missing — identical data via the fixed seeds, it just takes the corresponding runtime.
 
@@ -105,7 +106,7 @@ information**, so the raw simulated data does not need to be distributed.
 > requires the original authors' **`phackR`** package (from `astefan1/phacking_compendium`, not on CRAN):
 > `remotes::install_github("astefan1/phacking_compendium", subdir = "phackR")`.
 
-> Optional stopping and outlier exclusion were run on **UBELIX**, the University of Bern HPC
+> Optional stopping, outlier exclusion and the Yuen comparison were run on **UBELIX**, the University of Bern HPC
 > cluster (https://www.id.unibe.ch/hpc), at 30,000 / 10,000 iterations. Reproducing them locally
 > is possible but computationally intensive.
 
@@ -113,13 +114,13 @@ information**, so the raw simulated data does not need to be distributed.
 
 The [`supplementary/`](supplementary/) folder holds the rendered result documents and the
 additional analyses referenced in the thesis (FPR by mechanism and sample size, all estimates
-with MCSE, and exploratory analyses).
+with MCSE, exploratory analyses, , and the simulation comparing the `DescTools` and `WRS2` implementations of Yuen's test).
 See [`supplementary/README.md`](supplementary/README.md) for an index mapping each document to
 the thesis sections it supports.
 
 ## Data availability
 
-Raw simulated data objects (`sim_*.rds`, several hundred MB each) are **not** distributed:
+Raw simulated data objects (`sim_*.rds`, up to several hundred MB each) are **not** distributed:
 they are regenerable outputs, fully determined by the code and the fixed seeds documented above,
 and exceed GitHub's 100 MB file limit. Only the small aggregated summaries, RNG-state files, and
 session-info files are included.
