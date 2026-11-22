@@ -79,8 +79,8 @@ information**, so the raw simulated data does not need to be distributed.
 
 1. Install **R** (R 4.4.1 was used for discretizing, alternative tests, and incorrect rounding;
    R 4.5.1 for the HPC-run optional stopping, outlier exclusion, and Yuen comparison) and RStudio.
-3. Open `phacking-replication.Rproj` so that all relative paths resolve.
-4. Install the required packages (see exact versions in the `*sessionInfo*` files):
+2. Open `phacking-replication.Rproj` so that all relative paths resolve.
+3. Install the required packages (see exact versions in the `*sessionInfo*` files):
    `tidyverse` (2.0.0), `furrr` (0.3.1), `DescTools` (0.99.60), `WRS2` (1.1-7),
    `flextable`, `apa7`, `ftExtra`, plus their dependencies.
    The outlier study additionally calls `aplpack`, `mvoutlier`, and `R.devices` via `::`.
@@ -88,10 +88,10 @@ information**, so the raw simulated data does not need to be distributed.
    their versions were retrieved retrospectively from the unchanged UBELIX environment
    used for the simulation (R 4.5.1): `aplpack` 1.3.5, `mvoutlier` 2.1.4 (with its
    dependency `sgeostat` 1.0-27), `R.devices` 2.17.4.
-5. **Run a simulation:** source the corresponding `*_run_sim.R` (or run the sim chunk of the
+4. **Run a simulation:** source the corresponding `*_run_sim.R` (or run the sim chunk of the
    `.Rmd`). This regenerates the raw `sim_*.rds` locally (these are large and intentionally
    git-ignored — see *Data availability*).
-6. **Reproduce the analysis:** knit the corresponding `*_results.Rmd` / strategy `.Rmd`.
+5. **Reproduce the analysis:** knit the corresponding `*_results.Rmd` / strategy `.Rmd`.
    The small aggregated summaries needed for most tables/figures are included in `results/`.
 
 > **Viewing vs. re-computing:**

@@ -136,7 +136,7 @@ if (!file.exists(sim_yuen_trim_file)) {
 
 ## summary: empirical Type I error by trim, n, case, and method
 ```{r summary_yuen_trim}
-sim_summary_yuen_trim_file <- paste0("results_UBELIX/sim_summary_yuen_trim_", n_iterations, "iterations.rds")
+sim_summary_yuen_trim_file <- paste0("results_UBELIX/sim_yuen_trim_summary_", n_iterations, "iterations.rds")
 
 if (!file.exists(sim_summary_yuen_trim_file)) {
   sim_summary_yuen_trim <- sim_yuen_trim |>
